@@ -1,3 +1,0 @@
-usbh_hid_keybd.c:265:20:USBH_HID_KeybdInit	8	static
-usbh_hid_keybd.c:299:25:USBH_HID_GetKeybdInfo	16	static
-usbh_hid_keybd.c:356:9:USBH_HID_GetASCIICode	0	static

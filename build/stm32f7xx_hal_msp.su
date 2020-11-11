@@ -1,2 +1,0 @@
-stm32f7xx_hal_msp.c:65:6:HAL_MspInit	0	static
-stm32f7xx_hal_msp.c:74:6:HAL_MspDeInit	0	static

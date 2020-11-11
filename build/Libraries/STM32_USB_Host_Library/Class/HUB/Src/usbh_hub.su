@@ -1,7 +1,0 @@
-usbh_hub.c:409:27:USBH_HUB_SOFProcess	0	static
-usbh_hub.c:502:27:clear_port_feature	4	static
-usbh_hub.c:161:27:USBH_HUB_ClassRequest	16	static
-usbh_hub.c:142:27:USBH_HUB_InterfaceDeInit	16	static
-usbh_hub.c:77:27:USBH_HUB_InterfaceInit	40	static
-usbh_hub.c:552:6:detach.isra.2	24	static
-usbh_hub.c:206:27:USBH_HUB_Process	40	static
