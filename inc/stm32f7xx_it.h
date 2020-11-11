@@ -44,7 +44,13 @@
 #endif 
 
 /* Includes ------------------------------------------------------------------*/
+#ifdef USE_STM32F769I_DISCO
 #include "stm32f769i_discovery_audio.h"
+#endif
+
+#ifdef USE_STM32746G_DISCOVERY
+#include "stm32746g_discovery_audio.h"
+#endif
 
 /* Exported types ------------------------------------------------------------*/
 /* Exported constants --------------------------------------------------------*/

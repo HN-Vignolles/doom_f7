@@ -179,7 +179,7 @@ static void USBThread(void const * argument)
 
 static void DoomThread(void const * argument)
 {
-	D_DoomMain ();
+	//D_DoomMain ();
 }
 
 /**
@@ -315,8 +315,9 @@ static void SystemClock_Config(void)
   RCC_OscInitStruct.PLL.PLLN = 432;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
   RCC_OscInitStruct.PLL.PLLQ = 9;
+#ifdef USE_STM32F769I_DISCO
   RCC_OscInitStruct.PLL.PLLR = 7;
-  
+#endif
   ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
   if(ret != HAL_OK)
   {

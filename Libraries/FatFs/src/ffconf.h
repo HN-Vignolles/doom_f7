@@ -14,9 +14,11 @@
 /-----------------------------------------------------------------------------*/
 #include "stm32f7xx_hal.h"
 
-#ifdef USE_STM32F769I_DISCO
+#if defined(USE_STM32F769I_DISCO)
   /* #include "usbh_msc.h" */
   #include "stm32f769i_discovery_sd.h"
+#elif defined(USE_STM32746G_DISCOVERY)
+  #include "stm32746g_discovery_sd.h"
 #else
   #error "Please select first the Board used in your application (in boardname_eval.h file)"
 #endif

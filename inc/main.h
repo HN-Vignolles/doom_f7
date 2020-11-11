@@ -41,13 +41,20 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f7xx_hal.h"
-#include "stm32f769i_discovery.h"
+#ifdef USE_STM32746G_DISCOVERY
+#include "stm32746g_discovery.h"
+#endif
+
+#ifdef USE_STM32F769I_DISCO
+//#include "stm32f769i_discovery.h"
+#endif
 
 /**
   * @brief   File system
   */
 #include "ff_gen_drv.h"
-#include "sd_diskio.h"
+#include "sd_diskio_dma_rtos.h"
+//#include "sd_diskio.h"
 
 /**
   * @brief   Usb hid

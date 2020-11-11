@@ -1,0 +1,60 @@
+GCCP = /opt/st/stm32cubeide_1.4.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.linux64_1.4.0.202007081208/tools
+GCCR = $(GCCP)/bin
+CUBE = $(HOME)/STM32Cube/Repository/STM32Cube_FW_F7_V1.16.0
+ROOT = $(HOME)/github/doom_f7
+PREFIX = arm-none-eabi-
+
+CC = $(GCCR)/$(PREFIX)gcc
+OBJC = $(GCCR)/$(PREFIX)objcopy 
+LD = $(GCCR)/$(PREFIX)ld
+AR = $(GCCR)/$(PREFIX)ar
+
+
+GAME = doom
+DEVICE = stm32f746-disco
+
+
+CFLAGS = -std=gnu11 -g3 -Os -ffunction-sections -Wall -fstack-usage -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb
+CFLAGS += -DUSE_USB_HS -DDATA_IN_ExtSDRAM -DUSE_HAL_DRIVER
+CFLAGS += --specs=nosys.specs
+CFLAGS += --specs=nano.specs
+
+FRTOS = FreeRTOSv
+FATF = FatFsv
+
+IPATH = \
+    -I$(GCCP)/arm-none-eabi/include \
+    -I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include \
+    -I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include-fixed \
+    -I$(CUBE)/Drivers/BSP/STM32746G-Discovery \
+    -I$(CUBE)/Drivers/BSP/Components/Common \
+    -I$(CUBE)/Drivers/CMSIS/Device/ST/STM32F7xx/Include \
+    -I$(CUBE)/Drivers/CMSIS/Include \
+	-I$(CUBE)/Drivers/STM32F7xx_HAL_Driver/Inc \
+	-I$(CUBE)/Utilities/Log \
+	-I$(CUBE)/Utilities/Fonts \
+	-I$(CUBE)/Utilities/CPU \
+	-I$(ROOT)/Libraries/$(FATF)/src \
+	-I$(ROOT)/Libraries/$(FATF)/src/drivers \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/include \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/portable/GCC/ARM_CM7/r0p1 \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/CMSIS_RTOS \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Core/Inc \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HID/Inc \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HUB/Inc \
+	-I$(ROOT)/inc
+
+
+ifeq ($(strip $(DEVICE)),stm32f746-disco)
+CFLAGS += -mcpu=cortex-m7 -DSTM32F756xx -DUSE_STM32746G_DISCOVERY
+STARTUP = startup_stm32f746xx
+IPATH += -I$(CUBE)/Drivers/BSP/STM32746G-Discovery
+else ifeq ($(strip $(DEVICE)),stm32f769i-disco)
+CFLAGS += -mcpu=cortex-m7 -DSTM32F769xx -DUSE_STM32F769I_DISCO
+STARTUP = startup_stm32f746xx
+else
+$(error DEVICE undefined and $(USR_SRCS))
+endif
+
+
+
