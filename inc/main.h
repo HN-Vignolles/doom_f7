@@ -43,6 +43,7 @@
 #include "stm32f7xx_hal.h"
 #ifdef USE_STM32746G_DISCOVERY
 #include "stm32746g_discovery.h"
+#include "stm32746g_discovery_lcd.h"
 #endif
 
 #ifdef USE_STM32F769I_DISCO

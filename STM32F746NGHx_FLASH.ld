@@ -35,14 +35,19 @@ ENTRY(Reset_Handler)
 /* Highest address of the user mode stack */
 _estack = 0x20050000;    /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x200;      /* required amount of heap  */
-_Min_Stack_Size = 0x400; /* required amount of stack */
+/*_Min_Heap_Size = 0x200; */ /* required amount of heap  */
+/*_Min_Stack_Size = 0x400; */ /* required amount of stack */
+_Min_Stack_Size = 0x2000; /* required amount of stack */
+__heap_start = 0xC0177000;
+__heap_limit = 0xC07D0000;
 
 /* Specify the memory areas */
 MEMORY
 {
 FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
-RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
+RAM_ISR (xrw)   : ORIGIN = 0x20000000, LENGTH = 512
+RAM (xrw)      : ORIGIN = 0x20000200, LENGTH = 320K - 512
+SDRAM (xrw) : ORIGIN = 0xC0177000, LENGTH = 6656K /* first 1536K is used as LCD frame buffer */
 }
 
 /* Define output sections */
@@ -52,10 +57,20 @@ SECTIONS
   .isr_vector :
   {
     . = ALIGN(4);
+    _isr_vector_flash_start = .;
     KEEP(*(.isr_vector)) /* Startup code */
+    _isr_vector_flash_end = .;
     . = ALIGN(4);
   } >FLASH
 
+  ._isr_vector_ram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    _isr_vector_ram_start = .;
+    KEEP(*(._isr_vector_ram)) /* Startup code */
+    . = ALIGN(4);
+  }>RAM_ISR
+  
   /* The program code and other data goes into FLASH */
   .text :
   {
@@ -148,7 +163,7 @@ SECTIONS
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
+    /*. = . + _Min_Heap_Size;*/
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM

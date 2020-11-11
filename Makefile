@@ -1,4 +1,65 @@
-include makedefs
+GCCP = /opt/st/stm32cubeide_1.4.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.linux64_1.4.0.202007081208/tools
+GCCR = $(GCCP)/bin
+CUBE = $(HOME)/STM32Cube/Repository/STM32Cube_FW_F7_V1.16.0
+ROOT = $(HOME)/github/doom_f7
+PREFIX = arm-none-eabi-
+
+CC = $(GCCR)/$(PREFIX)gcc
+OBJC = $(GCCR)/$(PREFIX)objcopy 
+LD = $(GCCR)/$(PREFIX)ld
+AR = $(GCCR)/$(PREFIX)ar
+SIZE = $(GCCR)/$(PREFIX)size
+
+
+GAME = doom
+DEVICE = stm32f746-disco
+
+
+CFLAGS = -std=gnu11 -g3 -Os -ffunction-sections -Wall -fstack-usage -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb
+CFLAGS += -DUSE_USB_HS -DDATA_IN_ExtSDRAM -DUSE_HAL_DRIVER
+CFLAGS += --specs=nosys.specs
+CFLAGS += --specs=nano.specs
+
+FRTOS = FreeRTOSv
+FATF = FatFsv
+
+IPATH = \
+	-I$(GCCP)/arm-none-eabi/include \
+	-I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include \
+	-I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include-fixed \
+	-I$(CUBE)/Drivers/BSP/STM32746G-Discovery \
+	-I$(ROOT)/Drivers/BSP/Components/rk043fn48h \
+	-I$(CUBE)/Drivers/BSP/Components/Common \
+	-I$(CUBE)/Drivers/CMSIS/Device/ST/STM32F7xx/Include \
+	-I$(CUBE)/Drivers/CMSIS/Include \
+	-I$(CUBE)/Drivers/STM32F7xx_HAL_Driver/Inc \
+	-I$(CUBE)/Utilities/Log \
+	-I$(CUBE)/Utilities/Fonts \
+	-I$(CUBE)/Utilities/CPU \
+	-I$(ROOT)/Libraries/$(FATF)/src \
+	-I$(ROOT)/Libraries/$(FATF)/src/drivers \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/include \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/portable/GCC/ARM_CM7/r0p1 \
+	-I$(ROOT)/Libraries/$(FRTOS)/Source/CMSIS_RTOS \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Core/Inc \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HID/Inc \
+	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HUB/Inc \
+	-I$(ROOT)/inc \
+	-I$(ROOT)/App/chocdoom \
+	-I$(ROOT)/App/chocdoom/doom
+
+
+ifeq ($(strip $(DEVICE)),stm32f746-disco)
+CFLAGS += -mcpu=cortex-m7 -DSTM32F756xx -DUSE_STM32746G_DISCOVERY
+STARTUP = startup_stm32f746xx
+IPATH += -I$(CUBE)/Drivers/BSP/STM32746G-Discovery
+else ifeq ($(strip $(DEVICE)),stm32f769i-disco)
+CFLAGS += -mcpu=cortex-m7 -DSTM32F769xx -DUSE_STM32F769I_DISCO
+STARTUP = startup_stm32f746xx
+else
+$(error DEVICE undefined and $(USR_SRCS))
+endif
+
 
 USR_OBJS = build/main.o build/stm32f7xx_hal_msp.o build/stm32f7xx_it.o build/syscalls.o build/sysmem.o build/usbh_conf.o
 USR_SRCS = $(patsubst %.o,%.c,$(subst build,src,$(USR_OBJS)))
@@ -14,36 +75,38 @@ build/$(STARTUP).o: src/$(STARTUP).S
 ################
 #   FreeRTOS   #
 ################
+FRTOS_PATH = Libraries/FreeRTOSv/Source
 FRTOS_OBJS = \
-	build/Libraries/FreeRTOSv/Source/portable/MemMang/heap_4.o \
-	build/Libraries/FreeRTOSv/Source/portable/GCC/ARM_CM7/r0p1/port.o \
-	build/Libraries/FreeRTOSv/Source/CMSIS_RTOS/cmsis_os.o \
-	build/Libraries/FreeRTOSv/Source/croutine.o \
-	build/Libraries/FreeRTOSv/Source/list.o \
-	build/Libraries/FreeRTOSv/Source/queue.o \
-	build/Libraries/FreeRTOSv/Source/tasks.o \
-	build/Libraries/FreeRTOSv/Source/timers.o
+	build/$(FRTOS_PATH)/portable/MemMang/heap_4.o \
+	build/$(FRTOS_PATH)/portable/GCC/ARM_CM7/r0p1/port.o \
+	build/$(FRTOS_PATH)/CMSIS_RTOS/cmsis_os.o \
+	build/$(FRTOS_PATH)/croutine.o \
+	build/$(FRTOS_PATH)/list.o \
+	build/$(FRTOS_PATH)/queue.o \
+	build/$(FRTOS_PATH)/tasks.o \
+	build/$(FRTOS_PATH)/timers.o
 FRTOS_SRCS  = $(patsubst %.o,%.c,$(subst build/,,$(FRTOS_OBJS)))
 $(FRTOS_OBJS): $(FRTOS_SRCS)
-	@mkdir -p build/Libraries/FreeRTOSv/Source/portable/MemMang
-	@mkdir -p build/Libraries/FreeRTOSv/Source/portable/GCC/ARM_CM7/r0p1
-	@mkdir -p build/Libraries/FreeRTOSv/Source/CMSIS_RTOS
+	@mkdir -p build/$(FRTOS_PATH)/portable/MemMang
+	@mkdir -p build/$(FRTOS_PATH)/portable/GCC/ARM_CM7/r0p1
+	@mkdir -p build/$(FRTOS_PATH)/CMSIS_RTOS
 	$(CC) $(subst build/,,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
 
 
 ###############
 #    FatFs    #
 ###############
+FATF_PATH = Libraries/FatFsv/src
 FATF_OBJS = \
-	build/Libraries/FatFsv/src/option/syscall.o \
-	build/Libraries/FatFsv/src/option/unicode.o \
-	build/Libraries/FatFsv/src/sd_diskio_dma_rtos.o \
-	build/Libraries/FatFsv/src/diskio.o \
-	build/Libraries/FatFsv/src/ff.o \
-	build/Libraries/FatFsv/src/ff_gen_drv.o
+	build/$(FATF_PATH)/option/syscall.o \
+	build/$(FATF_PATH)/option/unicode.o \
+	build/$(FATF_PATH)/sd_diskio_dma_rtos.o \
+	build/$(FATF_PATH)/diskio.o \
+	build/$(FATF_PATH)/ff.o \
+	build/$(FATF_PATH)/ff_gen_drv.o
 FATF_SRCS  = $(patsubst %.o,%.c,$(subst build/,,$(FRTOS_OBJS)))
 $(FATF_OBJS): $(FATF_SRCS)
-	@mkdir -p build/Libraries/FatFsv/src/option
+	@mkdir -p build/$(FATF_PATH)/option
 	$(CC) $(subst build/,,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
 
 
@@ -54,18 +117,13 @@ HAL_PATH = $(CUBE)/Drivers/STM32F7xx_HAL_Driver/Src
 HAL_OBJS = \
 	build/stm32f7xx_hal.o \
 	build/stm32f7xx_hal_cortex.o \
-	build/stm32f7xx_hal_dma.o \
-	build/stm32f7xx_hal_dma_ex.o \
+	build/stm32f7xx_hal_dma.o build/stm32f7xx_hal_dma_ex.o \
 	build/stm32f7xx_hal_gpio.o \
-	build/stm32f7xx_hal_i2c.o \
-	build/stm32f7xx_hal_i2c_ex.o \
-	build/stm32f7xx_hal_pwr.o \
-	build/stm32f7xx_hal_pwr_ex.o \
-	build/stm32f7xx_hal_rcc.o \
-	build/stm32f7xx_hal_rcc_ex.o \
+	build/stm32f7xx_hal_i2c.o build/stm32f7xx_hal_i2c_ex.o \
+	build/stm32f7xx_hal_pwr.o build/stm32f7xx_hal_pwr_ex.o \
+	build/stm32f7xx_hal_rcc.o build/stm32f7xx_hal_rcc_ex.o \
 	build/stm32f7xx_hal_sd.o \
-	build/stm32f7xx_hal_tim.o \
-	build/stm32f7xx_hal_tim_ex.o \
+	build/stm32f7xx_hal_tim.o build/stm32f7xx_hal_tim_ex.o \
 	build/stm32f7xx_hal_sdram.o \
 	build/stm32f7xx_hal_uart.o \
 	build/stm32f7xx_hal_ltdc.o \
@@ -100,36 +158,45 @@ BSP_SRCS = \
 BSP_OBJS = $(patsubst %.c,%.o,$(subst $(BSP_PATH)/,build/Libraries/$(DEVICE)/,$(BSP_SRCS)))
 $(BSP_OBJS): $(BSP_SRCS)
 	@mkdir -p build/Libraries/$(DEVICE)
-	@echo '>>>>>> $(BSP_OBJS)'
 	$(CC) $(subst build/Libraries/$(DEVICE)/,$(BSP_PATH)/,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
 
 
 ######################
 #   STM32_USB_Host   #
 ######################
+USBH_PATH = build/Libraries/STM32_USB_Host_Library
 USBH_OBJS = \
-	build/Libraries/STM32_USB_Host_Library/Class/HID/Src/usbh_hid.o \
-	build/Libraries/STM32_USB_Host_Library/Class/HID/Src/usbh_hid_keybd.o \
-	build/Libraries/STM32_USB_Host_Library/Class/HID/Src/usbh_hid_mouse.o \
-	build/Libraries/STM32_USB_Host_Library/Class/HID/Src/usbh_hid_parser.o \
-	build/Libraries/STM32_USB_Host_Library/Class/HUB/Src/usbh_hub.o \
-	build/Libraries/STM32_USB_Host_Library/Core/Src/usbh_core.o \
-	build/Libraries/STM32_USB_Host_Library/Core/Src/usbh_ctlreq.o \
-	build/Libraries/STM32_USB_Host_Library/Core/Src/usbh_ioreq.o \
-	build/Libraries/STM32_USB_Host_Library/Core/Src/usbh_pipes.o
+	$(USBH_PATH)/Class/HID/Src/usbh_hid.o \
+	$(USBH_PATH)/Class/HID/Src/usbh_hid_keybd.o \
+	$(USBH_PATH)/Class/HID/Src/usbh_hid_mouse.o \
+	$(USBH_PATH)/Class/HID/Src/usbh_hid_parser.o \
+	$(USBH_PATH)/Class/HUB/Src/usbh_hub.o \
+	$(USBH_PATH)/Core/Src/usbh_core.o \
+	$(USBH_PATH)/Core/Src/usbh_ctlreq.o \
+	$(USBH_PATH)/Core/Src/usbh_ioreq.o \
+	$(USBH_PATH)/Core/Src/usbh_pipes.o
 USBH_SRCS = $(patsubst %.o,%.c,$(subst build/,,$(USBH_OBJS)))
 $(USBH_OBJS): $(USBH_SRCS)
-	@mkdir -p build/Libraries/STM32_USB_Host_Library/Class/HID/Src
-	@mkdir -p build/Libraries/STM32_USB_Host_Library/Class/HUB/Src
-	@mkdir -p build/Libraries/STM32_USB_Host_Library/Core/Src
+	@mkdir -p $(USBH_PATH)/Class/HID/Src
+	@mkdir -p $(USBH_PATH)/Class/HUB/Src
+	@mkdir -p $(USBH_PATH)/Core/Src
 	$(CC) $(subst build/,,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
+
+
+##############
+#    DOOM    #
+##############
+DOOM_PATH = 
+DOOM_OBJS = \
+	build/App/
+
 
 
 OBJS = $(FRTOS_OBJS) $(FATF_OBJS) $(USBH_OBJS) $(HAL_OBJS) $(CMSIS_OBJS) $(BSP_OBJS) \
 	 $(USR_OBJS) build/$(STARTUP).o 
 
 
-all: $(GAME).elf $(GAME).bin
+all: $(GAME).elf $(GAME).bin size
 
 
 $(GAME).elf: $(OBJS) STM32F746NGHx_FLASH.ld
@@ -154,6 +221,8 @@ flash: all
 	-c "flash write_image erase $(GAME).bin 0x08000000" \
 	-c "reset run" -c shutdown
 
+size: $(GAME).elf
+	$(SIZE) --format=sysv -d $(GAME).elf
 
 clean:
 	@rm build/*
