@@ -16,8 +16,9 @@ DEVICE = stm32f746-disco
 
 
 CFLAGS = -std=gnu11 -g3 -Os -ffunction-sections -Wall -fstack-usage -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb
-CFLAGS += -DUSE_USB_HS -DDATA_IN_ExtSDRAM -DUSE_HAL_DRIVER
-CFLAGS += --specs=nosys.specs
+CFLAGS += -DUSE_USB_HS -DUSE_HAL_DRIVER -DDATA_IN_ExtSDRAM
+#CFLAGS += -DUSE_FULL_ASSERT
+#CFLAGS += --specs=nosys.specs
 CFLAGS += --specs=nano.specs
 
 FRTOS = FreeRTOSv
@@ -27,8 +28,8 @@ IPATH = \
 	-I$(GCCP)/arm-none-eabi/include \
 	-I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include \
 	-I$(GCCP)/lib/gcc/arm-none-eabi/7.3.1/include-fixed \
-	-I$(CUBE)/Drivers/BSP/STM32746G-Discovery \
 	-I$(ROOT)/Drivers/BSP/Components/rk043fn48h \
+	-I$(ROOT)/Drivers/BSP/Components/wm8994 \
 	-I$(CUBE)/Drivers/BSP/Components/Common \
 	-I$(CUBE)/Drivers/CMSIS/Device/ST/STM32F7xx/Include \
 	-I$(CUBE)/Drivers/CMSIS/Include \
@@ -46,7 +47,9 @@ IPATH = \
 	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HUB/Inc \
 	-I$(ROOT)/inc \
 	-I$(ROOT)/App/chocdoom \
-	-I$(ROOT)/App/chocdoom/doom
+	-I$(ROOT)/App/chocdoom/doom \
+	-I$(ROOT)/App/chocdoom/heretic \
+	-I$(ROOT)/App/chocdoom/hexen
 
 
 ifeq ($(strip $(DEVICE)),stm32f746-disco)
@@ -57,11 +60,11 @@ else ifeq ($(strip $(DEVICE)),stm32f769i-disco)
 CFLAGS += -mcpu=cortex-m7 -DSTM32F769xx -DUSE_STM32F769I_DISCO
 STARTUP = startup_stm32f746xx
 else
-$(error DEVICE undefined and $(USR_SRCS))
+$(error DEVICE undefined)
 endif
 
 
-USR_OBJS = build/main.o build/stm32f7xx_hal_msp.o build/stm32f7xx_it.o build/syscalls.o build/sysmem.o build/usbh_conf.o
+USR_OBJS = build/stm32f7xx_hal_msp.o build/main.o  build/stm32f7xx_it.o build/syscalls.o build/sysmem.o build/usbh_conf.o
 USR_SRCS = $(patsubst %.o,%.c,$(subst build,src,$(USR_OBJS)))
 
 $(USR_OBJS): $(USR_SRCS)
@@ -126,8 +129,9 @@ HAL_OBJS = \
 	build/stm32f7xx_hal_tim.o build/stm32f7xx_hal_tim_ex.o \
 	build/stm32f7xx_hal_sdram.o \
 	build/stm32f7xx_hal_uart.o \
-	build/stm32f7xx_hal_ltdc.o \
+	build/stm32f7xx_hal_ltdc.o build/stm32f7xx_hal_ltdc_ex.o \
 	build/stm32f7xx_hal_hcd.o \
+	build/stm32f7xx_hal_sai.o \
 	build/stm32f7xx_ll_fmc.o \
 	build/stm32f7xx_ll_usb.o \
 	build/stm32f7xx_ll_sdmmc.o
@@ -154,11 +158,15 @@ BSP_SRCS = \
 	$(BSP_PATH)/stm32746g_discovery_sd.c \
 	$(BSP_PATH)/stm32746g_discovery_audio.c \
 	$(BSP_PATH)/stm32746g_discovery_lcd.c \
-	$(BSP_PATH)/stm32746g_discovery_sdram.c
+	$(BSP_PATH)/stm32746g_discovery_sdram.c \
+	$(BSP_PATH)/../Components/wm8994/wm8994.c
 BSP_OBJS = $(patsubst %.c,%.o,$(subst $(BSP_PATH)/,build/Libraries/$(DEVICE)/,$(BSP_SRCS)))
 $(BSP_OBJS): $(BSP_SRCS)
 	@mkdir -p build/Libraries/$(DEVICE)
+	@mkdir -p build/Libraries/Components/wm8994
 	$(CC) $(subst build/Libraries/$(DEVICE)/,$(BSP_PATH)/,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
+# BSP-Components  
+bsptest: $(BSP_OBJS)
 
 
 ######################
@@ -187,14 +195,21 @@ $(USBH_OBJS): $(USBH_SRCS)
 #    DOOM    #
 ##############
 # dummy.c am_map.c doomdef.c doomstat.c dstrings.c d_event.c d_items.c d_iwad.c d_loop.c d_main.c d_mode.c d_net.c f_finale.c f_wipe.c g_game.c hu_lib.c hu_stuff.c info.c i_cdmus.c i_endoom.c i_joystick.c i_main.c i_scale.c i_sound.c i_system.c i_timer.c i_video.c memio.c m_argv.c m_bbox.c m_cheat.c m_config.c m_controls.c m_fixed.c m_menu.c m_misc.c m_random.c p_ceilng.c p_doors.c p_enemy.c p_floor.c p_inter.c p_lights.c p_map.c p_maputl.c p_mobj.c p_plats.c p_pspr.c p_saveg.c p_setup.c p_sight.c p_spec.c p_switch.c p_telept.c p_tick.c p_user.c r_bsp.c r_data.c r_draw.c r_main.c r_plane.c r_segs.c r_sky.c r_things.c sha1.c sounds.c statdump.c st_lib.c st_stuff.c s_sound.c tables.c v_video.c wi_stuff.c w_checksum.c w_file.c w_file_stdc.c w_main.c w_wad.c z_zone.c
-DOOM_PATH = 
-DOOM_OBJS = \
-	build/App/
+DOOM_PATH = App/chocdoom
+# Ignore heretic, hexen (for now), and i_videohr.c
+DOOM_SRCS = $(shell find App -type d \( -path App/chocdoom/heretic -o -path App/chocdoom/hexen \) -prune -false -o -name *.c)
+DOOM_OBJS_ = $(patsubst %.c,%.o,$(addprefix build/,$(DOOM_SRCS)))
+DOOM_BUILD_FILTER = build%i_videohr.o build%w_stdio.o
+DOOM_OBJS = $(filter-out $(DOOM_BUILD_FILTER),$(DOOM_OBJS_))
+$(DOOM_OBJS): $(DOOM_SRCS)
+	@mkdir -p build/$(DOOM_PATH)/doom
+	@mkdir -p build/$(DOOM_PATH)/heretic
+	$(CC) $(subst build/,,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
 
 
 
 OBJS = $(FRTOS_OBJS) $(FATF_OBJS) $(USBH_OBJS) $(HAL_OBJS) $(CMSIS_OBJS) $(BSP_OBJS) \
-	 $(USR_OBJS) build/$(STARTUP).o 
+	 $(DOOM_OBJS) $(USR_OBJS) build/$(STARTUP).o 
 
 
 all: $(GAME).elf $(GAME).bin size

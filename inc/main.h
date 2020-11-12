@@ -44,6 +44,7 @@
 #ifdef USE_STM32746G_DISCOVERY
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_lcd.h"
+//#include "stm32746g_discovery_sdram.h"
 #endif
 
 #ifdef USE_STM32F769I_DISCO

@@ -73,7 +73,7 @@ extern void D_DoomMain (void);
   */
 int main(void)
 {
-	/* Copy ISRs to RAM */
+	/* Copy ISRs to RAM (c.f. system_stm32f7xx.c) */
 	memcpy(	(uint8_t *)&_isr_vector_ram_start,
 			(uint8_t *)&_isr_vector_flash_start,
 			&_isr_vector_flash_end - &_isr_vector_flash_start );
@@ -81,85 +81,73 @@ int main(void)
 	/* Relocate the vector table */
 	SCB->VTOR = (uint32_t) &_isr_vector_ram_start;
 
-  /* This project template calls firstly two functions in order to configure MPU feature 
-     and to enable the CPU Cache, respectively MPU_Config() and CPU_CACHE_Enable().
-     These functions are provided as template implementation that User may integrate 
-     in his application, to enhance the performance in case of use of AXI interface 
-     with several masters. */ 
-  
-  /* Configure the MPU attributes as Write Through */
-  MPU_Config();
+	/* Configure the MPU attributes as Write Through */
+	//MPU_Config();
 
-  /* Enable the CPU Cache */
-  CPU_CACHE_Enable();
+	/* Enable the CPU Cache */
+	//CPU_CACHE_Enable();
 
-  /* STM32F7xx HAL library initialization:
+	/* STM32F7xx HAL library initialization:
        - Configure the Flash ART accelerator on ITCM interface
        - Configure the Systick to generate an interrupt each 1 msec
        - Set NVIC Group Priority to 4
        - Low Level Initialization
-     */
-  HAL_Init();
+	 */
+	HAL_Init();
 
-  /* Configure the system clock to 216 MHz */
-  SystemClock_Config();
-
-  BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
-  BSP_LED_On(LED_GREEN);
-  
-LCD_Config();
-
-  while (1)
-  {
-  }
-
+	/* Configure the system clock to 216 MHz */
+	SystemClock_Config();
 
 
 #if defined(DATA_IN_ExtSDRAM)
-  /* Initialize the SDRAM */
-  BSP_SDRAM_Init();
+	/* Initialize the SDRAM */
+	BSP_SDRAM_Init();
 #endif /* DATA_IN_ExtSDRAM */
 
- 
-  
-  /* Setup SD GPIO */
-  FATFS_LinkDriver(&SD_Driver, Path);
-  BSP_SD_Detect_MspInit(&uSdHandle, NULL);
+	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
+	BSP_LED_On(LED_GREEN);
 
-  while( BSP_SD_IsDetected() != 1 );
-  while( f_mount(&FatFs, (TCHAR const*)Path, 1) != FR_OK );
+	LCD_Config(); //testing
+	while(1);
 
-  memset(&hUSBHost[0], 0, sizeof(USBH_HandleTypeDef));
+	/* Setup SD GPIO */
+	FATFS_LinkDriver(&SD_Driver, Path);
+	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
 
-  hUSBHost[0].valid   = 1;
-  hUSBHost[0].address = USBH_DEVICE_ADDRESS;
-  hUSBHost[0].Pipes   = USBH_malloc(sizeof(uint32_t) * USBH_MAX_PIPES_NBR);
+	while( BSP_SD_IsDetected() != 1 );
+	while( f_mount(&FatFs, (TCHAR const*)Path, 1) != FR_OK );
 
-  /* Init Host Library */
-  USBH_Init(&hUSBHost[0], USBH_UserProcess, 0);
+	memset(&hUSBHost[0], 0, sizeof(USBH_HandleTypeDef));
 
-  /* Add Supported Class */
-  USBH_RegisterClass(&hUSBHost[0], USBH_HID_CLASS);
-  USBH_RegisterClass(&hUSBHost[0], USBH_HUB_CLASS);
+	hUSBHost[0].valid   = 1;
+	hUSBHost[0].address = USBH_DEVICE_ADDRESS;
+	hUSBHost[0].Pipes   = USBH_malloc(sizeof(uint32_t) * USBH_MAX_PIPES_NBR);
 
-  /* Start Host Process */
-  USBH_Start(&hUSBHost[0]);
+	/* Init Host Library */
+	USBH_Init(&hUSBHost[0], USBH_UserProcess, 0);
 
-  /* USB task */
-  osThreadDef(USB_Thread, USBThread, osPriorityNormal, 0, 8 * configMINIMAL_STACK_SIZE);
-  osThreadCreate(osThread(USB_Thread), NULL);
+	/* Add Supported Class */
+	USBH_RegisterClass(&hUSBHost[0], USBH_HID_CLASS);
+	USBH_RegisterClass(&hUSBHost[0], USBH_HUB_CLASS);
 
-  /* Doom task */
-  osThreadDef(DOOM_Thread, DoomThread, osPriorityNormal, 0, 16 * configMINIMAL_STACK_SIZE);
-  thread_id = osThreadCreate(osThread(DOOM_Thread), NULL);
+	/* Start Host Process */
+	USBH_Start(&hUSBHost[0]);
 
-  osThreadSuspend (thread_id);
+	/* USB task */
+	osThreadDef(USB_Thread, USBThread, osPriorityNormal, 0, 8 * configMINIMAL_STACK_SIZE);
+	osThreadCreate(osThread(USB_Thread), NULL);
 
-  /* Start scheduler */
-  osKernelStart();
+	/* Doom task */
+	osThreadDef(DOOM_Thread, DoomThread, osPriorityNormal, 0, 16 * configMINIMAL_STACK_SIZE);
+	thread_id = osThreadCreate(osThread(DOOM_Thread), NULL);
 
-  /* We should never get here as control is now taken by the scheduler */
-  for( ;; );
+	osThreadSuspend (thread_id);
+
+	/* Start scheduler */
+	osKernelStart();
+
+	/* We should never get here as control is now taken by the scheduler */
+	for( ;; );
 }
 
 void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName )
@@ -293,55 +281,43 @@ void HAL_Delay(__IO uint32_t Delay)
   */
 static void SystemClock_Config(void)
 {
-  RCC_ClkInitTypeDef RCC_ClkInitStruct;
-  RCC_OscInitTypeDef RCC_OscInitStruct;
-  HAL_StatusTypeDef ret = HAL_OK;
-  
-  /* Enable Power Control clock */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  
-  /* The voltage scaling allows optimizing the power consumption when the device is 
+	RCC_ClkInitTypeDef RCC_ClkInitStruct;
+	RCC_OscInitTypeDef RCC_OscInitStruct;
+	HAL_StatusTypeDef ret = HAL_OK;
+
+	/* Enable Power Control clock */
+	__HAL_RCC_PWR_CLK_ENABLE();
+
+	/* The voltage scaling allows optimizing the power consumption when the device is
      clocked below the maximum system frequency, to update the voltage scaling value 
      regarding system frequency refer to product datasheet.  */
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);  
+	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
 
-  /* Enable HSE Oscillator and activate PLL with HSE as source */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-  RCC_OscInitStruct.PLL.PLLM = 25;
-  RCC_OscInitStruct.PLL.PLLN = 432;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-  RCC_OscInitStruct.PLL.PLLQ = 9;
+	/* Enable HSE Oscillator and activate PLL with HSE as source */
+	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
+	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+	RCC_OscInitStruct.PLL.PLLM = 25;
+	RCC_OscInitStruct.PLL.PLLN = 432;
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+	RCC_OscInitStruct.PLL.PLLQ = 9;
 #ifdef USE_STM32F769I_DISCO
-  RCC_OscInitStruct.PLL.PLLR = 7;
+	RCC_OscInitStruct.PLL.PLLR = 7;
 #endif
-  ret = HAL_RCC_OscConfig(&RCC_OscInitStruct);
-  if(ret != HAL_OK)
-  {
-    Error_Handler();
-  }
-  
-  /* Activate the OverDrive to reach the 216 MHz Frequency */  
-  ret = HAL_PWREx_EnableOverDrive();
-  if(ret != HAL_OK)
-  {
-    Error_Handler();
-  }
-  
-  /* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
-  RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;  
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2; 
-  
-  ret = HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7);
-  if(ret != HAL_OK)
-  {
-    Error_Handler();
-  }
+	if(HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) Error_Handler();
+
+	/* Activate the OverDrive to reach the 216 MHz Frequency */
+	if(HAL_PWREx_EnableOverDrive() != HAL_OK) Error_Handler();
+
+	/* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
+	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
+	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
+	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
+
+	if(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK) Error_Handler();
 }
 
 /**
@@ -394,29 +370,17 @@ static void MPU_Config(void)
 static void LCD_Config(void){ 
     static LTDC_HandleTypeDef hltdc_F;
     LTDC_LayerCfgTypeDef      pLayerCfg;
-	
-    /* LTDC Initialization -------------------------------------------------------*/
 	RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
     PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
     PeriphClkInitStruct.PLLSAI.PLLSAIN = 192;
     PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
     PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
     HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
-
-
-    /* Polarity configuration */
-    /* Initialize the horizontal synchronization polarity as active low */
-    hltdc_F.Init.HSPolarity = LTDC_HSPOLARITY_AL;
-    /* Initialize the vertical synchronization polarity as active low */ 
-    hltdc_F.Init.VSPolarity = LTDC_VSPOLARITY_AL; 
-    /* Initialize the data enable polarity as active low */ 
-    hltdc_F.Init.DEPolarity = LTDC_DEPOLARITY_AL; 
-    /* Initialize the pixel clock polarity as input pixel clock */  
-    hltdc_F.Init.PCPolarity = LTDC_PCPOLARITY_IPC;
-    
-    /* The RK043FN48H LCD 480x272 is selected */
-    /* Timing Configuration */
-    hltdc_F.Init.HorizontalSync = (RK043FN48H_HSYNC - 1);
+    hltdc_F.Init.HSPolarity = LTDC_HSPOLARITY_AL; //Initialize the horizontal synchronization polarity as active low
+    hltdc_F.Init.VSPolarity = LTDC_VSPOLARITY_AL; //Initialize the vertical synchronization polarity as active low
+    hltdc_F.Init.DEPolarity = LTDC_DEPOLARITY_AL; //Initialize the data enable polarity as active low
+    hltdc_F.Init.PCPolarity = LTDC_PCPOLARITY_IPC; //Initialize the pixel clock polarity as input pixel clock
+    hltdc_F.Init.HorizontalSync = (RK043FN48H_HSYNC - 1); //The RK043FN48H LCD 480x272 is selected
     hltdc_F.Init.VerticalSync = (RK043FN48H_VSYNC - 1);
     hltdc_F.Init.AccumulatedHBP = (RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
     hltdc_F.Init.AccumulatedVBP = (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
@@ -424,16 +388,10 @@ static void LCD_Config(void){
     hltdc_F.Init.AccumulatedActiveW = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
     hltdc_F.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
     hltdc_F.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
-    
-    /* Configure R,G,B component values for LCD background color : all black background */
-    hltdc_F.Init.Backcolor.Blue = 0;
+    hltdc_F.Init.Backcolor.Blue = 0; //Configure R,G,B component values for LCD background color : all black background
     hltdc_F.Init.Backcolor.Green = 0;
     hltdc_F.Init.Backcolor.Red = 0;
-
     hltdc_F.Instance = LTDC;
-    
-    /* Layer1 Configuration ------------------------------------------------------*/
-    
     /* Windowing configuration */ 
     /* In this case all the active display area is used to display a picture then :
         Horizontal start = horizontal synchronization + Horizontal back porch = 43 
@@ -444,43 +402,20 @@ static void LCD_Config(void){
     pLayerCfg.WindowX1 = 480;
     pLayerCfg.WindowY0 = 0;
     pLayerCfg.WindowY1 = 272;
-    
-    /* Pixel Format configuration*/ 
-    pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565;
-    
-    /* Start Address configuration : frame buffer is located at FLASH memory */
-    pLayerCfg.FBStartAdress = (uint32_t)&RGB565_480x272;
-    
-    /* Alpha constant (255 == totally opaque) */
-    pLayerCfg.Alpha = 255;
-    
-    /* Default Color configuration (configure A,R,G,B component values) : no background color */
+    pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565; // Pixel Format configuration
+    pLayerCfg.FBStartAdress = (uint32_t)&RGB565_480x272; //Start Address configuration : frame buffer is located at FLASH memory
+    pLayerCfg.Alpha = 255; //Alpha constant (255 == totally opaque)
+    //Default Color configuration (configure A,R,G,B component values) : no background color
     pLayerCfg.Alpha0 = 0; /* fully transparent */
     pLayerCfg.Backcolor.Blue = 0;
     pLayerCfg.Backcolor.Green = 0;
     pLayerCfg.Backcolor.Red = 0;
-    
-    /* Configure blending factors */
-    pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA;
+    pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA; //Configure blending factors
     pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
-    
-    /* Configure the number of lines and number of pixels per line */
-    pLayerCfg.ImageWidth  = 480;
+    pLayerCfg.ImageWidth  = 480; //Configure the number of lines and number of pixels per line
     pLayerCfg.ImageHeight = 272;
-    
-    /* Configure the LTDC */  
-    if(HAL_LTDC_Init(&hltdc_F) != HAL_OK)
-    {
-        /* Initialization Error */
-        Error_Handler(); 
-    }
-        
-    /* Configure the Layer*/
-    if(HAL_LTDC_ConfigLayer(&hltdc_F, &pLayerCfg, 1) != HAL_OK)
-    {
-        /* Initialization Error */
-        Error_Handler(); 
-    }  
+    if(HAL_LTDC_Init(&hltdc_F) != HAL_OK) Error_Handler();
+    if(HAL_LTDC_ConfigLayer(&hltdc_F, &pLayerCfg, 1) != HAL_OK) Error_Handler();
 }
 
 /**
@@ -488,14 +423,11 @@ static void LCD_Config(void){
   * @param  None
   * @retval None
   */
-static void CPU_CACHE_Enable(void)
-{
-  /* Enable I-Cache */
-  SCB_EnableICache();
-
-  /* Enable D-Cache */
-  SCB_EnableDCache();
+static void CPU_CACHE_Enable(void){
+  	SCB_EnableICache();
+	SCB_EnableDCache();
 }
+
 
 #ifdef  USE_FULL_ASSERT
 

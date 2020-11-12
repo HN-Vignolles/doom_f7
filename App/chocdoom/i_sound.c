@@ -116,7 +116,13 @@ static music_module_t *music_modules[] =
 
 #include "deh_str.h"
 #include "z_zone.h"
+
+#ifdef USE_STM32F769I_DISCO
 #include "stm32f769i_discovery_audio.h"
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+#include "stm32746g_discovery_audio.h"
+#endif
 
 typedef struct _ExpandedSoundType
 {

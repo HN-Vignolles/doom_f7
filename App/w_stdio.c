@@ -75,7 +75,7 @@ int __wrap_fclose(FILE *stream)
 
 size_t __wrap_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-	FIL *fp = (FIL *) stream;
+	FILE *fp = (FIL *) stream;
 	unsigned int read_count;
 	unsigned int buf_count = size * nmemb;
 	
@@ -91,7 +91,7 @@ size_t __wrap_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 
 size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
-	FIL *fp = (FIL *) stream;
+	FILE *fp = (FIL *) stream;
 	unsigned int write_count;
 	unsigned int buf_count = size * nmemb;
 	
@@ -107,7 +107,7 @@ size_t __wrap_fwrite(const void *ptr, size_t size, size_t nmemb, FILE *stream)
 
 int __wrap_fseek(FILE *stream, long int offset, int whence)
 {
-	FIL *fp = (FIL *) stream;
+	FILE *fp = (FIL *) stream;
 	long temp_offset;
 
 	switch(whence)
@@ -143,7 +143,7 @@ int __wrap_remove(const char *filename)
 
 long int __wrap_ftell(FILE *stream)
 {
-	FIL *fp = (FIL *) stream;
+	FILE *fp = (FIL *) stream;
 
 	return (fp->fptr);
 }

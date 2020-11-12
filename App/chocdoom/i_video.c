@@ -39,7 +39,13 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #include <stdint.h>
 #include <stdbool.h>
 
+#ifdef USE_STM32F769I_DISCO
 #include "stm32f769i_discovery_lcd.h"
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+#include "stm32746g_discovery_lcd.h"
+#endif
+
 #include "usbh_hid.h"
 
 extern USBH_HandleTypeDef hUSBHost[5];
@@ -109,10 +115,15 @@ void I_InitGraphics (void)
 {
 	/* LCD DSI initialization in mode Video Burst */
 	/* Initialize DSI LCD */
+
+#ifdef USE_STM32F769I_DISCO
 	while(BSP_LCD_InitEx(LCD_ORIENTATION_LANDSCAPE) != LCD_OK);
-
 	BSP_LCD_SetBrightness(100);
-
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+	while(BSP_LCD_Init() != LCD_OK);
+#endif
+	
 	BSP_LCD_LayerDefaultInit(1, LCD_FB_START_ADDRESS);
 
 	BSP_LCD_SelectLayer(1);
