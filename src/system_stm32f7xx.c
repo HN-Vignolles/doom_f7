@@ -66,13 +66,17 @@
 /************************* Miscellaneous Configuration ************************/
 /*!< Uncomment the following line if you need to use external SDRAM mounted
      on DK as data memory  */
-/* #define DATA_IN_ExtSDRAM */
+
+#if !defined(DATA_IN_ExtSDRAM)
+   #define DATA_IN_ExtSDRAM
+#endif /* DATA_IN_ExtSDRAM */
 
 /*!< Uncomment the following line if you need to relocate your vector Table in
      Internal SRAM. */
 /* #define VECT_TAB_SRAM */
 #define VECT_TAB_OFFSET  0x00 /*!< Vector Table base offset field. 
                                    This value must be a multiple of 0x200. */
+
 /******************************************************************************/
 
 
@@ -505,13 +509,6 @@ void SystemInit_ExtMemCtl(void)
   /* Disable write protection */
   tmpreg = FMC_Bank5_6->SDCR[0]; 
   FMC_Bank5_6->SDCR[0] = (tmpreg & 0xFFFFFDFF);
-  
-  /*
-   * Disable the FMC bank1 (enabled after reset).
-   * This, prevents CPU speculation access on this bank which blocks the use of FMC during
-   * 24us. During this time the others FMC master (such as LTDC) cannot use it!
-   */
-  FMC_Bank1->BTCR[0] = 0x000030d2;
 }
 #endif
 #endif /* DATA_IN_ExtSDRAM */

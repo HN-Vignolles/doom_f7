@@ -69,7 +69,7 @@
 /   3: f_lseek() function is removed in addition to 2. */
 
 
-#define	_USE_STRFUNC	0
+#define	_USE_STRFUNC	2
 /* This option switches string functions, f_gets(), f_putc(), f_puts() and
 /  f_printf().
 /
@@ -78,7 +78,7 @@
 /  2: Enable with LF-CRLF conversion. */
 
 
-#define _USE_FIND		0
+#define _USE_FIND		1
 /* This option switches filtered directory read functions, f_findfirst() and
 /  f_findnext(). (0:Disable, 1:Enable 2:Enable with matching altname[] too) */
 
@@ -178,7 +178,7 @@
 /  This option has no effect when _LFN_UNICODE == 0. */
 
 
-#define _FS_RPATH	0
+#define _FS_RPATH	2
 /* This option configures support of relative path.
 /
 /   0: Disable relative path and remove related functions.
@@ -284,7 +284,7 @@
 /      can be opened simultaneously under file lock control. Note that the file
 /      lock control is independent of re-entrancy. */
 
-#define _FS_REENTRANT	1
+#define _FS_REENTRANT	0
 
 #if _FS_REENTRANT
 #include "cmsis_os.h"
@@ -312,15 +312,15 @@
 
 #if _USE_LFN == 3
 #if !defined(ff_malloc) || !defined(ff_free)
-#include "cmsis_os.h"
+#include <stdlib.h>
 #endif
 
 #if !defined(ff_malloc)
-#define ff_malloc pvPortMalloc
+#define ff_malloc malloc
 #endif
 
 #if !defined(ff_free)
-#define ff_free vPortFree
+#define ff_free free
 #endif
 #endif
 /*--- End of configuration options ---*/

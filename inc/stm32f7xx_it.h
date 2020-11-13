@@ -66,6 +66,8 @@ void SVC_Handler(void);
 void DebugMon_Handler(void);
 void SysTick_Handler(void);
 void AUDIO_OUT_SAIx_DMAx_IRQHandler(void);
+void BSP_SDRAM_DMA_IRQHandler(void);
+void DMA2D_IRQHandler(void);
 #ifdef USE_USB_FS
 void OTG_FS_IRQHandler(void);
 #else

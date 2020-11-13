@@ -46,6 +46,7 @@ defined in linker script */
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
 .equ __initial_spTop, 0x20000400
+.equ __spTop, _estack
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -60,6 +61,11 @@ defined in linker script */
   .type  Reset_Handler, %function
 Reset_Handler:  
   ldr   sp, =__initial_spTop     /* set stack pointer */
+
+/* Call the clock system initialization function.*/
+/* If the SDRAM is not initialized, copying .data and zeroing .bss won't work */
+  bl  SystemInit
+  ldr sp, =_estack
 
 /* Copy the data segment initializers from flash to SRAM */  
   movs  r1, #0
@@ -90,7 +96,7 @@ LoopFillZerobss:
   bcc  FillZerobss
 
 /* Call the clock system initialization function.*/
-  bl  SystemInit   
+  /*bl  SystemInit*/
 /* Call static constructors */
     bl __libc_init_array
 /* Call the application's entry point.*/

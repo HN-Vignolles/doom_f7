@@ -38,25 +38,6 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 
-/** @addtogroup STM32F7xx_HAL_Examples
-  * @{
-  */
-
-/** @addtogroup Templates
-  * @{
-  */
-
-/* Private typedef -----------------------------------------------------------*/
-/* Private define ------------------------------------------------------------*/
-/* Private macro -------------------------------------------------------------*/
-/* Private variables ---------------------------------------------------------*/
-/* Private function prototypes -----------------------------------------------*/
-/* Private functions ---------------------------------------------------------*/
-
-/** @defgroup HAL_MSP_Private_Functions
-  * @{
-  */
-
 /**
   * @brief LTDC MSP Initialization 
   *        This function configures the hardware resources used in this example: 
@@ -223,8 +204,16 @@ void HAL_SDRAM_MspInit(SDRAM_HandleTypeDef *hsdram)
   /* GPIOH configuration */
   GPIO_Init_Structure.Pin   = GPIO_PIN_3 | GPIO_PIN_5;
   HAL_GPIO_Init(GPIOH, &GPIO_Init_Structure);
+}
+void HAL_DMA2D_MspInit(DMA2D_HandleTypeDef *hdma2d)
+{
+  /*##-1- Enable peripherals and GPIO Clocks #################################*/
+  __HAL_RCC_DMA2D_CLK_ENABLE();
 
-
+  /*##-2- NVIC configuration  ################################################*/
+  /* NVIC configuration for DMA2D transfer complete interrupt */
+  HAL_NVIC_SetPriority(DMA2D_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(DMA2D_IRQn);
 }
 #endif
 /**
@@ -273,34 +262,5 @@ void HAL_MspDeInit(void)
 {
 }
 
-/**
-  * @brief  Initializes the PPP MSP.
-  * @param  None
-  * @retval None
-  */
-/*void HAL_PPP_MspInit(void)
-{*/
-/*}*/
-
-/**
-  * @brief  DeInitializes the PPP MSP.
-  * @param  None  
-  * @retval None
-  */
-/*void HAL_PPP_MspDeInit(void)
-{*/
-/*}*/
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
-
-/**
-  * @}
-  */
 
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/

@@ -37,8 +37,13 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "RGB565_480x272.h"
+#include "stdio.h"
+#include "lcd_log.h"
+#include "fonts.h"
 
+//The stm32f746g-discovery has lesser memory (RAM and SDRAM) than the f769-disc.
+//Using the main RAM for .data and .bss sections results in overflow
+//Using SDRAM for .bss can break some things (bss segment should be zero-filled at startup)
 
 extern uint8_t _isr_vector_ram_start asm("_isr_vector_ram_start");     /* Defined by the linker. */
 extern uint8_t _isr_vector_flash_start asm("_isr_vector_flash_start"); /* Defined by the linker. */
@@ -65,6 +70,7 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id);
 static void HUB_Process(void);
 
 extern void D_DoomMain (void);
+#define LCD_FRAME_BUFFER          ((uint32_t)0xC0000000)
 
 /**
   * @brief  Main program
@@ -73,6 +79,7 @@ extern void D_DoomMain (void);
   */
 int main(void)
 {
+#ifdef USE_STM32F769I_DISCO
 	/* Copy ISRs to RAM (c.f. system_stm32f7xx.c) */
 	memcpy(	(uint8_t *)&_isr_vector_ram_start,
 			(uint8_t *)&_isr_vector_flash_start,
@@ -80,12 +87,13 @@ int main(void)
 
 	/* Relocate the vector table */
 	SCB->VTOR = (uint32_t) &_isr_vector_ram_start;
+#endif
 
 	/* Configure the MPU attributes as Write Through */
-	//MPU_Config();
+	MPU_Config();
 
 	/* Enable the CPU Cache */
-	//CPU_CACHE_Enable();
+	CPU_CACHE_Enable();
 
 	/* STM32F7xx HAL library initialization:
        - Configure the Flash ART accelerator on ITCM interface
@@ -98,17 +106,12 @@ int main(void)
 	/* Configure the system clock to 216 MHz */
 	SystemClock_Config();
 
-
-#if defined(DATA_IN_ExtSDRAM)
+#ifdef USE_STM32F769I_DISCO
 	/* Initialize the SDRAM */
 	BSP_SDRAM_Init();
 #endif /* DATA_IN_ExtSDRAM */
 
 	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
-	BSP_LED_On(LED_GREEN);
-
-	LCD_Config(); //testing
-	while(1);
 
 	/* Setup SD GPIO */
 	FATFS_LinkDriver(&SD_Driver, Path);
@@ -116,6 +119,24 @@ int main(void)
 
 	while( BSP_SD_IsDetected() != 1 );
 	while( f_mount(&FatFs, (TCHAR const*)Path, 1) != FR_OK );
+
+	//uint32_t lcd_buf[LCD_FRAME_BUFFER_SIZE];
+
+	volatile int *test = (int*)malloc(sizeof(int));
+	if(BSP_LCD_Init()) *test = 33;
+	BSP_LCD_LayerDefaultInit(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
+	BSP_LCD_SelectLayer(LTDC_ACTIVE_LAYER);
+	BSP_LCD_FillCircle(BSP_LCD_GetXSize() - 40, 120, 20);
+	BSP_LCD_SetFont(&LCD_DEFAULT_FONT);
+	BSP_LCD_SetBackColor(LCD_COLOR_BLACK);
+	BSP_LCD_Clear(LCD_COLOR_BLACK);
+	BSP_LCD_SetTextColor(LCD_COLOR_WHITE);
+
+	LCD_LOG_Init();
+	LCD_LOG_SetHeader((uint8_t *)"Log:");
+	LCD_UsrLog("Testing\n");
+	printf("Z_Init: Init zone memory allocation daemon. \n");
+	D_DoomMain ();
 
 	memset(&hUSBHost[0], 0, sizeof(USBH_HandleTypeDef));
 
@@ -134,14 +155,14 @@ int main(void)
 	USBH_Start(&hUSBHost[0]);
 
 	/* USB task */
-	osThreadDef(USB_Thread, USBThread, osPriorityNormal, 0, 8 * configMINIMAL_STACK_SIZE);
-	osThreadCreate(osThread(USB_Thread), NULL);
+	//osThreadDef(USB_Thread, USBThread, osPriorityNormal, 0, 8 * configMINIMAL_STACK_SIZE);
+	//osThreadCreate(osThread(USB_Thread), NULL);
 
 	/* Doom task */
 	osThreadDef(DOOM_Thread, DoomThread, osPriorityNormal, 0, 16 * configMINIMAL_STACK_SIZE);
 	thread_id = osThreadCreate(osThread(DOOM_Thread), NULL);
 
-	osThreadSuspend (thread_id);
+	//osThreadSuspend (thread_id);
 
 	/* Start scheduler */
 	osKernelStart();
@@ -166,7 +187,7 @@ static void USBThread(void const * argument)
 
 static void DoomThread(void const * argument)
 {
-	//D_DoomMain ();
+	D_DoomMain ();
 }
 
 /**
@@ -284,7 +305,7 @@ static void SystemClock_Config(void)
 	RCC_ClkInitTypeDef RCC_ClkInitStruct;
 	RCC_OscInitTypeDef RCC_OscInitStruct;
 	HAL_StatusTypeDef ret = HAL_OK;
-
+#ifdef USE_STM32F769I_DISCO
 	/* Enable Power Control clock */
 	__HAL_RCC_PWR_CLK_ENABLE();
 
@@ -292,17 +313,23 @@ static void SystemClock_Config(void)
      clocked below the maximum system frequency, to update the voltage scaling value 
      regarding system frequency refer to product datasheet.  */
 	__HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE1);
-
+#endif
 	/* Enable HSE Oscillator and activate PLL with HSE as source */
 	RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
 	RCC_OscInitStruct.HSEState = RCC_HSE_ON;
 	RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
 	RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
 	RCC_OscInitStruct.PLL.PLLM = 25;
-	RCC_OscInitStruct.PLL.PLLN = 432;
-	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
-	RCC_OscInitStruct.PLL.PLLQ = 9;
 #ifdef USE_STM32F769I_DISCO
+	RCC_OscInitStruct.PLL.PLLN = 432;
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+	RCC_OscInitStruct.PLL.PLLN = 400;
+	RCC_OscInitStruct.PLL.PLLQ = 8;
+#endif
+	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
+#ifdef USE_STM32F769I_DISCO
+	RCC_OscInitStruct.PLL.PLLQ = 9;
 	RCC_OscInitStruct.PLL.PLLR = 7;
 #endif
 	if(HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK) Error_Handler();
@@ -316,8 +343,12 @@ static void SystemClock_Config(void)
 	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
 	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;
 	RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV2;
-
+#ifdef USE_STM32F769I_DISCO
 	if(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_7) != HAL_OK) Error_Handler();
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+	if(HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_6) != HAL_OK) Error_Handler();
+#endif
 }
 
 /**
@@ -365,57 +396,6 @@ static void MPU_Config(void)
 
   /* Enable the MPU */
   HAL_MPU_Enable(MPU_PRIVILEGED_DEFAULT);
-}
-
-static void LCD_Config(void){ 
-    static LTDC_HandleTypeDef hltdc_F;
-    LTDC_LayerCfgTypeDef      pLayerCfg;
-	RCC_PeriphCLKInitTypeDef  PeriphClkInitStruct;
-    PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_LTDC;
-    PeriphClkInitStruct.PLLSAI.PLLSAIN = 192;
-    PeriphClkInitStruct.PLLSAI.PLLSAIR = 5;
-    PeriphClkInitStruct.PLLSAIDivR = RCC_PLLSAIDIVR_4;
-    HAL_RCCEx_PeriphCLKConfig(&PeriphClkInitStruct);
-    hltdc_F.Init.HSPolarity = LTDC_HSPOLARITY_AL; //Initialize the horizontal synchronization polarity as active low
-    hltdc_F.Init.VSPolarity = LTDC_VSPOLARITY_AL; //Initialize the vertical synchronization polarity as active low
-    hltdc_F.Init.DEPolarity = LTDC_DEPOLARITY_AL; //Initialize the data enable polarity as active low
-    hltdc_F.Init.PCPolarity = LTDC_PCPOLARITY_IPC; //Initialize the pixel clock polarity as input pixel clock
-    hltdc_F.Init.HorizontalSync = (RK043FN48H_HSYNC - 1); //The RK043FN48H LCD 480x272 is selected
-    hltdc_F.Init.VerticalSync = (RK043FN48H_VSYNC - 1);
-    hltdc_F.Init.AccumulatedHBP = (RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-    hltdc_F.Init.AccumulatedVBP = (RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-    hltdc_F.Init.AccumulatedActiveH = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP - 1);
-    hltdc_F.Init.AccumulatedActiveW = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP - 1);
-    hltdc_F.Init.TotalHeigh = (RK043FN48H_HEIGHT + RK043FN48H_VSYNC + RK043FN48H_VBP + RK043FN48H_VFP - 1);
-    hltdc_F.Init.TotalWidth = (RK043FN48H_WIDTH + RK043FN48H_HSYNC + RK043FN48H_HBP + RK043FN48H_HFP - 1);
-    hltdc_F.Init.Backcolor.Blue = 0; //Configure R,G,B component values for LCD background color : all black background
-    hltdc_F.Init.Backcolor.Green = 0;
-    hltdc_F.Init.Backcolor.Red = 0;
-    hltdc_F.Instance = LTDC;
-    /* Windowing configuration */ 
-    /* In this case all the active display area is used to display a picture then :
-        Horizontal start = horizontal synchronization + Horizontal back porch = 43 
-        Vertical start   = vertical synchronization + vertical back porch     = 12
-        Horizontal stop = Horizontal start + window width -1 = 43 + 480 -1 
-        Vertical stop   = Vertical start + window height -1  = 12 + 272 -1      */
-    pLayerCfg.WindowX0 = 0;
-    pLayerCfg.WindowX1 = 480;
-    pLayerCfg.WindowY0 = 0;
-    pLayerCfg.WindowY1 = 272;
-    pLayerCfg.PixelFormat = LTDC_PIXEL_FORMAT_RGB565; // Pixel Format configuration
-    pLayerCfg.FBStartAdress = (uint32_t)&RGB565_480x272; //Start Address configuration : frame buffer is located at FLASH memory
-    pLayerCfg.Alpha = 255; //Alpha constant (255 == totally opaque)
-    //Default Color configuration (configure A,R,G,B component values) : no background color
-    pLayerCfg.Alpha0 = 0; /* fully transparent */
-    pLayerCfg.Backcolor.Blue = 0;
-    pLayerCfg.Backcolor.Green = 0;
-    pLayerCfg.Backcolor.Red = 0;
-    pLayerCfg.BlendingFactor1 = LTDC_BLENDING_FACTOR1_CA; //Configure blending factors
-    pLayerCfg.BlendingFactor2 = LTDC_BLENDING_FACTOR2_CA;
-    pLayerCfg.ImageWidth  = 480; //Configure the number of lines and number of pixels per line
-    pLayerCfg.ImageHeight = 272;
-    if(HAL_LTDC_Init(&hltdc_F) != HAL_OK) Error_Handler();
-    if(HAL_LTDC_ConfigLayer(&hltdc_F, &pLayerCfg, 1) != HAL_OK) Error_Handler();
 }
 
 /**

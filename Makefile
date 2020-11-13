@@ -9,6 +9,8 @@ OBJC = $(GCCR)/$(PREFIX)objcopy
 LD = $(GCCR)/$(PREFIX)ld
 AR = $(GCCR)/$(PREFIX)ar
 SIZE = $(GCCR)/$(PREFIX)size
+READELF = $(GCCR)/$(PREFIX)readelf
+OBJDUMP = $(GCCR)/$(PREFIX)objdump
 
 
 GAME = doom
@@ -35,7 +37,6 @@ IPATH = \
 	-I$(CUBE)/Drivers/CMSIS/Include \
 	-I$(CUBE)/Drivers/STM32F7xx_HAL_Driver/Inc \
 	-I$(CUBE)/Utilities/Log \
-	-I$(CUBE)/Utilities/Fonts \
 	-I$(CUBE)/Utilities/CPU \
 	-I$(ROOT)/Libraries/$(FATF)/src \
 	-I$(ROOT)/Libraries/$(FATF)/src/drivers \
@@ -45,17 +46,19 @@ IPATH = \
 	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Core/Inc \
 	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HID/Inc \
 	-I$(ROOT)/Libraries/STM32_USB_Host_Library/Class/HUB/Inc \
+	-I$(ROOT)/Libraries \
 	-I$(ROOT)/inc \
 	-I$(ROOT)/App/chocdoom \
 	-I$(ROOT)/App/chocdoom/doom \
 	-I$(ROOT)/App/chocdoom/heretic \
 	-I$(ROOT)/App/chocdoom/hexen
-
+IPATH += -I$(CUBE)/Utilities/Fonts
 
 ifeq ($(strip $(DEVICE)),stm32f746-disco)
 CFLAGS += -mcpu=cortex-m7 -DSTM32F756xx -DUSE_STM32746G_DISCOVERY
 STARTUP = startup_stm32f746xx
 IPATH += -I$(CUBE)/Drivers/BSP/STM32746G-Discovery
+LDSCRIPT = STM32F746NGHx_FLASH.ld
 else ifeq ($(strip $(DEVICE)),stm32f769i-disco)
 CFLAGS += -mcpu=cortex-m7 -DSTM32F769xx -DUSE_STM32F769I_DISCO
 STARTUP = startup_stm32f746xx
@@ -74,11 +77,17 @@ $(USR_OBJS): $(USR_SRCS)
 build/$(STARTUP).o: src/$(STARTUP).S
 	$(CC) -mcpu=cortex-m7 -g3 -c -x assembler-with-cpp --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -o "$@" "$<"
 
+################
+#     LCD      #
+################
+LCD_OBJS = build/Libraries/lcd_log.o
+$(LCD_OBJS): Libraries/lcd_log.c
+	$(CC) $< -c $(CFLAGS) $(IPATH) -o "$@"
 
 ################
 #   FreeRTOS   #
 ################
-FRTOS_PATH = Libraries/FreeRTOSv/Source
+FRTOS_PATH = Libraries/$(FRTOS)/Source
 FRTOS_OBJS = \
 	build/$(FRTOS_PATH)/portable/MemMang/heap_4.o \
 	build/$(FRTOS_PATH)/portable/GCC/ARM_CM7/r0p1/port.o \
@@ -99,11 +108,11 @@ $(FRTOS_OBJS): $(FRTOS_SRCS)
 ###############
 #    FatFs    #
 ###############
-FATF_PATH = Libraries/FatFsv/src
+FATF_PATH = Libraries/$(FATF)/src
 FATF_OBJS = \
 	build/$(FATF_PATH)/option/syscall.o \
 	build/$(FATF_PATH)/option/unicode.o \
-	build/$(FATF_PATH)/sd_diskio_dma_rtos.o \
+	build/$(FATF_PATH)/sd_diskio.o \
 	build/$(FATF_PATH)/diskio.o \
 	build/$(FATF_PATH)/ff.o \
 	build/$(FATF_PATH)/ff_gen_drv.o
@@ -121,6 +130,7 @@ HAL_OBJS = \
 	build/stm32f7xx_hal.o \
 	build/stm32f7xx_hal_cortex.o \
 	build/stm32f7xx_hal_dma.o build/stm32f7xx_hal_dma_ex.o \
+	build/stm32f7xx_hal_dma2d.o \
 	build/stm32f7xx_hal_gpio.o \
 	build/stm32f7xx_hal_i2c.o build/stm32f7xx_hal_i2c_ex.o \
 	build/stm32f7xx_hal_pwr.o build/stm32f7xx_hal_pwr_ex.o \
@@ -154,14 +164,14 @@ $(CMSIS_OBJS): $(CMSIS_SRCS)
 ###############
 BSP_PATH = $(CUBE)/Drivers/BSP/STM32746G-Discovery
 BSP_SRCS = \
+	$(BSP_PATH)/../Components/wm8994/wm8994.c \
 	$(BSP_PATH)/stm32746g_discovery.c \
 	$(BSP_PATH)/stm32746g_discovery_sd.c \
 	$(BSP_PATH)/stm32746g_discovery_audio.c \
 	$(BSP_PATH)/stm32746g_discovery_lcd.c \
-	$(BSP_PATH)/stm32746g_discovery_sdram.c \
-	$(BSP_PATH)/../Components/wm8994/wm8994.c
+	$(BSP_PATH)/stm32746g_discovery_sdram.c
 BSP_OBJS = $(patsubst %.c,%.o,$(subst $(BSP_PATH)/,build/Libraries/$(DEVICE)/,$(BSP_SRCS)))
-$(BSP_OBJS): $(BSP_SRCS)
+$(BSP_OBJS): build/stm32f7xx_hal_msp.o $(BSP_SRCS)
 	@mkdir -p build/Libraries/$(DEVICE)
 	@mkdir -p build/Libraries/Components/wm8994
 	$(CC) $(subst build/Libraries/$(DEVICE)/,$(BSP_PATH)/,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
@@ -194,7 +204,6 @@ $(USBH_OBJS): $(USBH_SRCS)
 ##############
 #    DOOM    #
 ##############
-# dummy.c am_map.c doomdef.c doomstat.c dstrings.c d_event.c d_items.c d_iwad.c d_loop.c d_main.c d_mode.c d_net.c f_finale.c f_wipe.c g_game.c hu_lib.c hu_stuff.c info.c i_cdmus.c i_endoom.c i_joystick.c i_main.c i_scale.c i_sound.c i_system.c i_timer.c i_video.c memio.c m_argv.c m_bbox.c m_cheat.c m_config.c m_controls.c m_fixed.c m_menu.c m_misc.c m_random.c p_ceilng.c p_doors.c p_enemy.c p_floor.c p_inter.c p_lights.c p_map.c p_maputl.c p_mobj.c p_plats.c p_pspr.c p_saveg.c p_setup.c p_sight.c p_spec.c p_switch.c p_telept.c p_tick.c p_user.c r_bsp.c r_data.c r_draw.c r_main.c r_plane.c r_segs.c r_sky.c r_things.c sha1.c sounds.c statdump.c st_lib.c st_stuff.c s_sound.c tables.c v_video.c wi_stuff.c w_checksum.c w_file.c w_file_stdc.c w_main.c w_wad.c z_zone.c
 DOOM_PATH = App/chocdoom
 # Ignore heretic, hexen (for now), and i_videohr.c
 DOOM_SRCS = $(shell find App -type d \( -path App/chocdoom/heretic -o -path App/chocdoom/hexen \) -prune -false -o -name *.c)
@@ -209,15 +218,15 @@ $(DOOM_OBJS): $(DOOM_SRCS)
 
 
 OBJS = $(FRTOS_OBJS) $(FATF_OBJS) $(USBH_OBJS) $(HAL_OBJS) $(CMSIS_OBJS) $(BSP_OBJS) \
-	 $(DOOM_OBJS) $(USR_OBJS) build/$(STARTUP).o 
+	 $(DOOM_OBJS) $(LCD_OBJS) $(USR_OBJS) build/$(STARTUP).o 
 
 
-all: $(GAME).elf $(GAME).bin size
+all: $(GAME).elf $(GAME).bin size relf objd
 
 
-$(GAME).elf: $(OBJS) STM32F746NGHx_FLASH.ld
+$(GAME).elf: $(OBJS) $(LDSCRIPT)
 	@mkdir -p build
-	$(CC) -o "$(GAME).elf" $(OBJS) -mcpu=cortex-m7 -T"STM32F746NGHx_FLASH.ld" --specs=nosys.specs -Wl,-Map="$(GAME).map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	$(CC) -o "$(GAME).elf" $(OBJS) -mcpu=cortex-m7 -T"$(LDSCRIPT)" --specs=nosys.specs -Wl,-Map="$(GAME).map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
@@ -238,7 +247,11 @@ flash: all
 	-c "reset run" -c shutdown
 
 size: $(GAME).elf
-	$(SIZE) --format=sysv -d $(GAME).elf
+	$(SIZE) --format=SysV -x $(GAME).elf
+relf: $(GAME).elf
+	$(READELF) -a $(GAME).elf > $(GAME).readelf.txt
+objd: $(GAME).elf
+	$(OBJDUMP) -d $(GAME).elf > $(GAME).objdump.txt
 
 clean:
 	@rm build/*

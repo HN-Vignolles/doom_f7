@@ -34,17 +34,18 @@
   *
   ******************************************************************************
   */
-  
-/* Define to prevent recursive inclusion -------------------------------------*/
+
 #ifndef __MAIN_H
 #define __MAIN_H
 
-/* Includes ------------------------------------------------------------------*/
-#include "stm32f7xx_hal.h"
+#include "stdio.h"
+//#include "stm32f7xx_hal.h"
 #ifdef USE_STM32746G_DISCOVERY
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_lcd.h"
-//#include "stm32746g_discovery_sdram.h"
+#include "stm32746g_discovery_sdram.h"
+#define ARBG8888_BYTE_PER_PIXEL   4
+#define LCD_FRAME_BUFFER_SIZE (RK043FN48H_WIDTH * RK043FN48H_HEIGHT * ARBG8888_BYTE_PER_PIXEL)
 #endif
 
 #ifdef USE_STM32F769I_DISCO
@@ -55,8 +56,7 @@
   * @brief   File system
   */
 #include "ff_gen_drv.h"
-#include "sd_diskio_dma_rtos.h"
-//#include "sd_diskio.h"
+#include "sd_diskio.h"
 
 /**
   * @brief   Usb hid
@@ -69,11 +69,6 @@
   * @brief   FREERTOS
   */
 #include "cmsis_os.h"
-
-/* Exported types ------------------------------------------------------------*/
-/* Exported constants --------------------------------------------------------*/
-/* Exported macro ------------------------------------------------------------*/
-/* Exported functions ------------------------------------------------------- */
 
 #endif /* __MAIN_H */
 

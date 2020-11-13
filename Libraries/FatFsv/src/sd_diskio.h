@@ -1,8 +1,8 @@
 /**
   ******************************************************************************
-  * @file    sd_diskio_dma_rtos.h
+  * @file    sd_diskio.h
   * @author  MCD Application Team
-  * @brief   Header for sd_diskio_dma_rtos.c module.
+  * @brief   Header for sd_diskio.c module.
   ******************************************************************************
   * @attention
   *
