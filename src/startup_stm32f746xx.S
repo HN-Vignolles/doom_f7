@@ -45,7 +45,7 @@ defined in linker script */
 /* end address for the .bss section. defined in linker script */
 .word  _ebss
 /* stack used for SystemInit_ExtMemCtl; always internal RAM used */
-
+.equ __initial_spTop, 0x20000400
 /**
  * @brief  This is the code that gets called when the processor first
  *          starts execution following a reset event. Only the absolutely
@@ -59,7 +59,7 @@ defined in linker script */
   .weak  Reset_Handler
   .type  Reset_Handler, %function
 Reset_Handler:  
-  ldr   sp, =_estack      /* set stack pointer */
+  ldr   sp, =__initial_spTop     /* set stack pointer */
 
 /* Copy the data segment initializers from flash to SRAM */  
   movs  r1, #0
@@ -123,7 +123,7 @@ Infinite_Loop:
    
    
 g_pfnVectors:
-  .word  _estack
+  .word   __initial_spTop /* Use internal RAM for stack for calling SystemInit. */
   .word  Reset_Handler
 
   .word  NMI_Handler
