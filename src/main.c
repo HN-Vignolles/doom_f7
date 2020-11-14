@@ -35,22 +35,19 @@
   ******************************************************************************
   */
 
-/* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "stdio.h"
 #include "lcd_log.h"
-#include "fonts.h"
 
 //The stm32f746g-discovery has lesser memory (RAM and SDRAM) than the f769-disc.
 //Using the main RAM for .data and .bss sections results in overflow
 //Using SDRAM for .bss can break some things (bss segment should be zero-filled at startup)
 
+#ifdef USE_STM32F769I_DISCO
 extern uint8_t _isr_vector_ram_start asm("_isr_vector_ram_start");     /* Defined by the linker. */
 extern uint8_t _isr_vector_flash_start asm("_isr_vector_flash_start"); /* Defined by the linker. */
 extern uint8_t _isr_vector_flash_end asm("_isr_vector_flash_end");     /* Defined by the linker. */
-
-FATFS 	FatFs;
-char 	Path[4];
+#endif
 
 USBH_HandleTypeDef hUSBHost[5], *phUSBHost = NULL;
 uint8_t host_state;
@@ -62,7 +59,6 @@ static void SystemClock_Config(void);
 static void Error_Handler(void);
 static void MPU_Config(void);
 static void CPU_CACHE_Enable(void);
-static void LCD_Config(void);
 
 static void USBThread(void const *argument);
 static void DoomThread(void const *argument);
@@ -72,11 +68,7 @@ static void HUB_Process(void);
 extern void D_DoomMain (void);
 #define LCD_FRAME_BUFFER          ((uint32_t)0xC0000000)
 
-/**
-  * @brief  Main program
-  * @param  None
-  * @retval None
-  */
+
 int main(void)
 {
 #ifdef USE_STM32F769I_DISCO
@@ -113,17 +105,21 @@ int main(void)
 
 	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
 
-	/* Setup SD GPIO */
+	char Path[4]={0,0,0,0};
+	FIL MyFile;
+	FATFS 	FatFs; //This structure should be in the main internal ram.
+	memset(&FatFs,0,sizeof(FATFS));
+	memset(&MyFile,0,sizeof(FIL));
+	volatile int *test = (int*)malloc(sizeof(int));
+
 	FATFS_LinkDriver(&SD_Driver, Path);
 	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
-
 	while( BSP_SD_IsDetected() != 1 );
-	while( f_mount(&FatFs, (TCHAR const*)Path, 1) != FR_OK );
-
-	//uint32_t lcd_buf[LCD_FRAME_BUFFER_SIZE];
-
-	volatile int *test = (int*)malloc(sizeof(int));
-	if(BSP_LCD_Init()) *test = 33;
+	if( f_mount(&FatFs, (TCHAR const*)Path, 0) != FR_OK ) Error_Handler();
+	else {
+		*test = 23;
+	}
+	BSP_LCD_Init();
 	BSP_LCD_LayerDefaultInit(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
 	BSP_LCD_SelectLayer(LTDC_ACTIVE_LAYER);
 	BSP_LCD_FillCircle(BSP_LCD_GetXSize() - 40, 120, 20);
@@ -134,8 +130,8 @@ int main(void)
 
 	LCD_LOG_Init();
 	LCD_LOG_SetHeader((uint8_t *)"Log:");
-	LCD_UsrLog("Testing\n");
-	printf("Z_Init: Init zone memory allocation daemon. \n");
+	LCD_UsrLog("Testing 1\n");
+	printf("Testing 2\n");
 	D_DoomMain ();
 
 	memset(&hUSBHost[0], 0, sizeof(USBH_HandleTypeDef));
