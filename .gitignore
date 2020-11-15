@@ -2,3 +2,5 @@
 *.bin
 *.map
 *.elf
+.project
+.cproject

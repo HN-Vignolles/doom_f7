@@ -36,7 +36,7 @@ ENTRY(Reset_Handler)
 /*_estack = 0xC07D0000;    /* end of SDRAM */
 _estack = 0x20050000; /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
-_Min_Heap_Size = 0x2000; /* required amount of heap  */
+/*_Min_Heap_Size = 0x2000; /* required amount of heap  */
 _Min_Stack_Size = 0x2000; /* required amount of stack */
 
 /* Specify the memory areas */
@@ -44,12 +44,20 @@ MEMORY
 {
 FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
-SDRAM (xrw) : ORIGIN = 0xC0177000, LENGTH = 6656K /* first 1536K is used as LCD frame buffer */
+/*SDRAM (xrw) : ORIGIN = 0xC0177000, LENGTH = 6656K */ /* first 1536K is used as LCD frame buffer */
+SDRAM (xrw) : ORIGIN = 0xC004B000, LENGTH = 7892K /* first 300K is used as LCD frame buffer */
 }
 
 /* Define output sections */
 SECTIONS
 {
+  /* doom heap and misc */
+  .sdram (NOLOAD) :
+  {
+    . = ALIGN(4);
+    *(.sdram .sdram.*)
+  } > SDRAM
+
   /* The startup code goes first into FLASH */
   .isr_vector :
   {
@@ -135,7 +143,7 @@ SECTIONS
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
-  } >SDRAM AT> FLASH
+  } >RAM AT> FLASH
 
   
   /* Uninitialized data section */
@@ -160,7 +168,7 @@ SECTIONS
     . = ALIGN(8);
     PROVIDE ( end = . );
     PROVIDE ( _end = . );
-    . = . + _Min_Heap_Size;
+    /*. = . + _Min_Heap_Size;*/
     . = . + _Min_Stack_Size;
     . = ALIGN(8);
   } >RAM

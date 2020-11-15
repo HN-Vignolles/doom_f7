@@ -20,7 +20,6 @@ DEVICE = stm32f746-disco
 CFLAGS = -std=gnu11 -g3 -Os -ffunction-sections -Wall -fstack-usage -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb
 CFLAGS += -DUSE_USB_HS -DUSE_HAL_DRIVER -DDATA_IN_ExtSDRAM
 #CFLAGS += -DUSE_FULL_ASSERT
-#CFLAGS += --specs=nosys.specs
 CFLAGS += --specs=nano.specs
 
 FRTOS = FreeRTOSv
@@ -221,17 +220,17 @@ OBJS = $(FRTOS_OBJS) $(FATF_OBJS) $(USBH_OBJS) $(HAL_OBJS) $(CMSIS_OBJS) $(BSP_O
 	 $(DOOM_OBJS) $(LCD_OBJS) $(USR_OBJS) build/$(STARTUP).o 
 
 
-all: $(GAME).elf $(GAME).bin size relf objd
+all: build/$(GAME).elf build/$(GAME).bin size relf objd
 
 
-$(GAME).elf: $(OBJS) $(LDSCRIPT)
+build/$(GAME).elf: $(OBJS) $(LDSCRIPT)
 	@mkdir -p build
-	$(CC) -o "$(GAME).elf" $(OBJS) -mcpu=cortex-m7 -T"$(LDSCRIPT)" --specs=nosys.specs -Wl,-Map="$(GAME).map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+	$(CC) -o "build/$(GAME).elf" $(OBJS) -mcpu=cortex-m7 -T"$(LDSCRIPT)" --specs=nosys.specs -Wl,-Map="build/$(GAME).map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv5-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
 
-$(GAME).bin: $(GAME).elf
+build/$(GAME).bin: build/$(GAME).elf
 	$(OBJC) -O binary $< $@
 
 
@@ -243,15 +242,15 @@ flash: all
 	-c "reset init" \
 	-c "flash probe 0" \
 	-c "flash info 0" \
-	-c "flash write_image erase $(GAME).bin 0x08000000" \
+	-c "flash write_image erase build/$(GAME).bin 0x08000000" \
 	-c "reset run" -c shutdown
 
-size: $(GAME).elf
-	$(SIZE) --format=SysV -x $(GAME).elf
-relf: $(GAME).elf
-	$(READELF) -a $(GAME).elf > $(GAME).readelf.txt
-objd: $(GAME).elf
-	$(OBJDUMP) -d $(GAME).elf > $(GAME).objdump.txt
+size: build/$(GAME).elf
+	$(SIZE) --format=SysV -x build/$(GAME).elf
+relf: build/$(GAME).elf
+	$(READELF) -a build/$(GAME).elf > build/$(GAME).readelf.txt
+objd: build/$(GAME).elf
+	$(OBJDUMP) -d build/$(GAME).elf > build/$(GAME).objdump.txt
 
 clean:
 	@rm build/*

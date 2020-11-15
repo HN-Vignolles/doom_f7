@@ -35,7 +35,8 @@ extern int errno;
  _sbrk
  Increase program data space. Malloc and related functions depend on this
 **/
-/*caddr_t _sbrk(int incr)
+#ifdef USE_STM32F769I_DISCO
+caddr_t _sbrk(int incr)
 {
 	extern char __heap_start asm("__heap_start"); // Defined by the linker.
 	extern char __heap_limit asm("__heap_limit"); // Defined by the linker.
@@ -58,5 +59,43 @@ extern int errno;
 	heap_end += incr;
 
 	return (caddr_t) prev_heap_end;
-}*/
+}
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+/* Author: Florian */
+
+#define HEAP_SIZE		0x00700000 // 7 MB
+
+/* heap */
+__attribute__ ((section(".sdram")))
+static char heap[HEAP_SIZE];
+
+/* pointer to current position in heap */
+static char* _cur_brk = heap;
+
+caddr_t _sbrk_r (struct _reent* r, int incr)
+{
+	char* _old_brk = _cur_brk;
+
+	if ((_cur_brk + incr) > (heap + HEAP_SIZE))
+	{
+		uint8_t i;
+
+		char* msg = "HEAP FULL!\r\n";
+
+		/*for (i = 0; i < strlen(msg); i++)
+		{
+			debug_chr (msg[i]);
+		}*/
+
+		errno = ENOMEM;
+		return (void *)-1;
+	}
+
+	_cur_brk += incr;
+
+	return (caddr_t)_old_brk;
+}
+#endif
+
 

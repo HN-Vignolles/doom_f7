@@ -119,6 +119,7 @@ int main(void)
 	else {
 		*test = 23;
 	}
+	/* FIXME: Less resolution for LCD, or it will overwrite heap memory */
 	BSP_LCD_Init();
 	BSP_LCD_LayerDefaultInit(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
 	BSP_LCD_SelectLayer(LTDC_ACTIVE_LAYER);
