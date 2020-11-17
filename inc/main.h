@@ -39,17 +39,17 @@
 #define __MAIN_H
 
 #include "stdio.h"
-//#include "stm32f7xx_hal.h"
+#include "stm32f7xx_hal.h"
 #ifdef USE_STM32746G_DISCOVERY
 #include "stm32746g_discovery.h"
 #include "stm32746g_discovery_lcd.h"
 #include "stm32746g_discovery_sdram.h"
-#define ARBG8888_BYTE_PER_PIXEL   4
-#define LCD_FRAME_BUFFER_SIZE (RK043FN48H_WIDTH * RK043FN48H_HEIGHT * ARBG8888_BYTE_PER_PIXEL)
+#include "stm32746g_discovery_qspi.h"
+#include "qspi_diskio.h"
 #endif
 
 #ifdef USE_STM32F769I_DISCO
-//#include "stm32f769i_discovery.h"
+#include "stm32f769i_discovery.h"
 #endif
 
 /**

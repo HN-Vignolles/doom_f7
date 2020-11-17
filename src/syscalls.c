@@ -93,7 +93,7 @@ return len;
 int _write(int file, char *ptr, int len)
 {
 	int DataIdx;
-	//FIXME
+	//FIXME:
 	/*for (DataIdx = 0; DataIdx < len; DataIdx++)
 	{
 		__io_putchar(*ptr++);

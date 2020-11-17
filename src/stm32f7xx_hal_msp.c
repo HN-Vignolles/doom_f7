@@ -249,9 +249,20 @@ void HAL_SDRAM_MspDeInit(SDRAM_HandleTypeDef *hsdram)
   * @param  None
   * @retval None
   */
+#ifdef USE_STM32746G_DISCOVERY
 void HAL_MspInit(void)
 {
+	GPIO_InitTypeDef  GPIO_InitStruct;
+	__HAL_RCC_GPIOI_CLK_ENABLE();
+
+	GPIO_InitStruct.Pin = (GPIO_PIN_3);
+	GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+	GPIO_InitStruct.Pull = GPIO_PULLUP;
+	GPIO_InitStruct.Speed = GPIO_SPEED_FAST;
+
+	HAL_GPIO_Init(GPIOI, &GPIO_InitStruct);
 }
+#endif
 
 /**
   * @brief  DeInitializes the Global MSP.

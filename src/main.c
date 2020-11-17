@@ -39,10 +39,6 @@
 #include "stdio.h"
 #include "lcd_log.h"
 
-//The stm32f746g-discovery has lesser memory (RAM and SDRAM) than the f769-disc.
-//Using the main RAM for .data and .bss sections results in overflow
-//Using SDRAM for .bss can break some things (bss segment should be zero-filled at startup)
-
 #ifdef USE_STM32F769I_DISCO
 extern uint8_t _isr_vector_ram_start asm("_isr_vector_ram_start");     /* Defined by the linker. */
 extern uint8_t _isr_vector_flash_start asm("_isr_vector_flash_start"); /* Defined by the linker. */
@@ -55,6 +51,9 @@ osThreadId thread_id;
 
 extern SD_HandleTypeDef uSdHandle;
 
+/*__attribute__((section(".qspi")))
+uint8_t qspi_flash[512];//N25Q128A_FLASH_SIZE];*/
+
 static void SystemClock_Config(void);
 static void Error_Handler(void);
 static void MPU_Config(void);
@@ -66,8 +65,11 @@ static void USBH_UserProcess(USBH_HandleTypeDef *phost, uint8_t id);
 static void HUB_Process(void);
 
 extern void D_DoomMain (void);
-#define LCD_FRAME_BUFFER          ((uint32_t)0xC0000000)
 
+#ifdef USE_STM32746G_DISCOVERY
+#define LCD_FRAME_BUFFER          ((uint32_t)0xC0000000)
+#define QSPI_ADDR ((uint32_t)0x90000000)
+#endif
 
 int main(void)
 {
@@ -105,12 +107,116 @@ int main(void)
 
 	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
 
+#ifdef USE_STM32746G_DISCOVERY
+	FRESULT res;                                          /* FatFs function common result code */
+	uint32_t byteswritten, bytesread;                     /* File write/read counts */
+	uint8_t wtext[] = "This is STM32 working with FatFs"; /* File write buffer */
+	uint8_t rtext[100];                                   /* File read buffer */
+	uint8_t workBuffer[2*_MAX_SS];
 	char Path[4]={0,0,0,0};
-	FIL MyFile;
+	FIL doom_wad;
 	FATFS 	FatFs; //This structure should be in the main internal ram.
 	memset(&FatFs,0,sizeof(FATFS));
-	memset(&MyFile,0,sizeof(FIL));
+	memset(&doom_wad,0,sizeof(FIL));
 	volatile int *test = (int*)malloc(sizeof(int));
+
+	//BSP_QSPI_Erase_Chip();
+
+	/*##-1- Link the RAM disk I/O driver #######################################*/
+	if(FATFS_LinkDriver(&QSPIDISK_Driver, Path) == 0)
+	{
+		/*##-2- Register the file system object to the FatFs module ##############*/
+		if(f_mount(&FatFs, (TCHAR const*)Path, 0) != FR_OK)
+		{
+			/* FatFs Initialization Error */
+			Error_Handler();
+		}
+		else
+		{
+			/*##-3- Create a FAT file system (format) on the logical drive #########*/
+			if(f_mkfs((TCHAR const*)Path, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK)
+			{
+				/* FatFs Format Error */
+				Error_Handler();
+			}
+			else
+			{
+				/*##-4- Create and Open a new text file object with write access #####*/
+				if(f_open(&doom_wad, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
+				{
+					/* 'STM32.TXT' file Open for write Error */
+					Error_Handler();
+				}
+				else
+				{
+					/*##-5- Write data to the text file ################################*/
+					res = f_write(&doom_wad, wtext, sizeof(wtext), (void *)&byteswritten);
+
+					if((byteswritten == 0) || (res != FR_OK))
+					{
+						/* 'STM32.TXT' file Write or EOF Error */
+						Error_Handler();
+					}
+					else
+					{
+						/*##-6- Close the open text file #################################*/
+						f_close(&doom_wad);
+
+						/*##-7- Open the text file object with read access ###############*/
+						if(f_open(&doom_wad, "STM32.TXT", FA_READ) != FR_OK)
+						{
+							/* 'STM32.TXT' file Open for read Error */
+							Error_Handler();
+						}
+						else
+						{
+							/*##-8- Read data from the text file ###########################*/
+							res = f_read(&doom_wad, rtext, sizeof(rtext), (void *)&bytesread);
+
+							if((bytesread == 0) || (res != FR_OK))
+							{
+								/* 'STM32.TXT' file Read or EOF Error */
+								Error_Handler();
+							}
+							else
+							{
+								/*##-9- Close the open text file #############################*/
+								f_close(&doom_wad);
+
+								/*##-10- Compare read data with the expected data ############*/
+								if ((bytesread != byteswritten))
+								{
+									/* Read data is different from the expected data */
+									Error_Handler();
+								}
+								else
+								{
+									/* Success of the demo: no error occurrence */
+									BSP_LED_On(LED1);
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	/*##-11- Unlink the RAM disk I/O driver ####################################*/
+	FATFS_UnLinkDriver(Path);
+
+	/* Infinite loop */
+	while (1)
+	{
+	}
+
+
+
+
+
+#endif
+
+
 
 	FATFS_LinkDriver(&SD_Driver, Path);
 	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
@@ -120,8 +226,10 @@ int main(void)
 		*test = 23;
 	}
 	/* FIXME: Less resolution for LCD, or it will overwrite heap memory */
+	/* We should put a background like after resizing the window in classic DOOM (?) */
 	BSP_LCD_Init();
 	BSP_LCD_LayerDefaultInit(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
+	BSP_LCD_SetLayerWindow(LTDC_ACTIVE_LAYER,0,0,320,240);
 	BSP_LCD_SelectLayer(LTDC_ACTIVE_LAYER);
 	BSP_LCD_FillCircle(BSP_LCD_GetXSize() - 40, 120, 20);
 	BSP_LCD_SetFont(&LCD_DEFAULT_FONT);
@@ -321,8 +429,8 @@ static void SystemClock_Config(void)
 	RCC_OscInitStruct.PLL.PLLN = 432;
 #endif
 #ifdef USE_STM32746G_DISCOVERY
-	RCC_OscInitStruct.PLL.PLLN = 400;
-	RCC_OscInitStruct.PLL.PLLQ = 8;
+	RCC_OscInitStruct.PLL.PLLN = 432; //400;
+	RCC_OscInitStruct.PLL.PLLQ = 9; //8;
 #endif
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 #ifdef USE_STM32F769I_DISCO

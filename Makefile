@@ -66,7 +66,7 @@ $(error DEVICE undefined)
 endif
 
 
-USR_OBJS = build/stm32f7xx_hal_msp.o build/main.o  build/stm32f7xx_it.o build/syscalls.o build/sysmem.o build/usbh_conf.o
+USR_OBJS = build/stm32f7xx_hal_msp.o build/qspi_diskio.o build/main.o  build/stm32f7xx_it.o build/syscalls.o build/sysmem.o build/usbh_conf.o
 USR_SRCS = $(patsubst %.o,%.c,$(subst build,src,$(USR_OBJS)))
 
 $(USR_OBJS): $(USR_SRCS)
@@ -141,6 +141,7 @@ HAL_OBJS = \
 	build/stm32f7xx_hal_ltdc.o build/stm32f7xx_hal_ltdc_ex.o \
 	build/stm32f7xx_hal_hcd.o \
 	build/stm32f7xx_hal_sai.o \
+	build/stm32f7xx_hal_qspi.o \
 	build/stm32f7xx_ll_fmc.o \
 	build/stm32f7xx_ll_usb.o \
 	build/stm32f7xx_ll_sdmmc.o
@@ -168,11 +169,13 @@ BSP_SRCS = \
 	$(BSP_PATH)/stm32746g_discovery_sd.c \
 	$(BSP_PATH)/stm32746g_discovery_audio.c \
 	$(BSP_PATH)/stm32746g_discovery_lcd.c \
-	$(BSP_PATH)/stm32746g_discovery_sdram.c
+	$(BSP_PATH)/stm32746g_discovery_sdram.c \
+	$(BSP_PATH)/stm32746g_discovery_qspi.c
 BSP_OBJS = $(patsubst %.c,%.o,$(subst $(BSP_PATH)/,build/Libraries/$(DEVICE)/,$(BSP_SRCS)))
 $(BSP_OBJS): build/stm32f7xx_hal_msp.o $(BSP_SRCS)
 	@mkdir -p build/Libraries/$(DEVICE)
 	@mkdir -p build/Libraries/Components/wm8994
+	@mkdir -p build/Libraries/Components/n25q128a
 	$(CC) $(subst build/Libraries/$(DEVICE)/,$(BSP_PATH)/,$*).c -c $(CFLAGS) $(IPATH) -o "$@"
 # BSP-Components  
 bsptest: $(BSP_OBJS)

@@ -46,35 +46,29 @@ FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
 /*SDRAM (xrw) : ORIGIN = 0xC0177000, LENGTH = 6656K */ /* first 1536K is used as LCD frame buffer */
 SDRAM (xrw) : ORIGIN = 0xC004B000, LENGTH = 7892K /* first 300K is used as LCD frame buffer */
+QSPI (xrw)      : ORIGIN = 0x90000000, LENGTH = 16M
 }
 
 /* Define output sections */
 SECTIONS
 {
+  .qspi : { *(.qspi) } >QSPI
+
   /* doom heap and misc */
   .sdram (NOLOAD) :
   {
     . = ALIGN(4);
     *(.sdram .sdram.*)
+    build/App/chocdoom/w_wad.o(COMMON)
   } > SDRAM
 
   /* The startup code goes first into FLASH */
   .isr_vector :
   {
     . = ALIGN(4);
-    /*_isr_vector_flash_start = .;*/
     KEEP(*(.isr_vector)) /* Startup code */
-    /*_isr_vector_flash_end = .;*/
     . = ALIGN(4);
   } >FLASH
-
-  /*._isr_vector_ram (NOLOAD) :
-  {
-    . = ALIGN(4);
-    _isr_vector_ram_start = .;
-    KEEP(*(._isr_vector_ram))
-    . = ALIGN(4);
-  }>RAM_ISR*/
   
   /* The program code and other data goes into FLASH */
   .text :
@@ -140,6 +134,8 @@ SECTIONS
     _sdata = .;        /* create a global symbol at data start */
     *(.data)           /* .data sections */
     *(.data*)          /* .data* sections */
+    *(.ram_buf)         /* FatFs wad file pointer */
+
 
     . = ALIGN(4);
     _edata = .;        /* define a global symbol at data end */
