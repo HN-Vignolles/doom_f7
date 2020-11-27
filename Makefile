@@ -1,4 +1,4 @@
-GCCP = /opt/st/stm32cubeide_1.4.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.linux64_1.4.0.202007081208/tools
+GCCP =/opt/st/stm32cubeide_1.4.0/plugins/com.st.stm32cube.ide.mcu.externaltools.gnu-tools-for-stm32.7-2018-q2-update.linux64_1.4.0.202007081208/tools
 GCCR = $(GCCP)/bin
 CUBE = $(HOME)/STM32Cube/Repository/STM32Cube_FW_F7_V1.16.0
 ROOT = $(HOME)/github/doom_f7
@@ -256,7 +256,7 @@ objd: build/$(GAME).elf
 	$(OBJDUMP) -d build/$(GAME).elf > build/$(GAME).objdump.txt
 
 clean:
-	@rm build/*
+	@rm -r build/*
 
 
 .PHONY: flash clean

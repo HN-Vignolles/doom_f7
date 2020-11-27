@@ -60,6 +60,7 @@
 #endif
 
 #define SD_DEFAULT_BLOCK_SIZE 512
+//512
 
 /*
  * Depending on the usecase, the SD card initialization could be done at the

@@ -4,3 +4,6 @@
 *.elf
 .project
 .cproject
+.clang_complete
+/**/.clang_complete
+compile_commands.json

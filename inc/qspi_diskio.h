@@ -2,6 +2,7 @@
   ******************************************************************************
   * @file    sdram_diskio_template.h
   * @author  MCD Application Team
+  * @author  HN-Vignolles
   * @brief   Header for sdram_diskio.c module.This filed needs to be customized
              and copied under the application project.
   ******************************************************************************

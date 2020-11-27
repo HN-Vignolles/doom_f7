@@ -107,124 +107,75 @@ int main(void)
 
 	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
 
+	//SD
+	char Path[4]={0,0,0,0};
+	FATFS sdFatFs;
+	memset(&sdFatFs,0,sizeof(FATFS));
+	if(FATFS_LinkDriver(&SD_Driver, Path) != 0) Error_Handler(); // 0:/
+	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
+	while( BSP_SD_IsDetected() != 1 );
+	if(f_mount(&sdFatFs, (TCHAR const*)Path, 0) != FR_OK) Error_Handler();
+
 #ifdef USE_STM32746G_DISCOVERY
+	//copy 1:/doom/doom1.wad --> 0:/doom/doom1.wad
 	FRESULT res;                                          /* FatFs function common result code */
 	uint32_t byteswritten, bytesread;                     /* File write/read counts */
 	uint8_t wtext[] = "This is STM32 working with FatFs"; /* File write buffer */
 	uint8_t rtext[100];                                   /* File read buffer */
 	uint8_t workBuffer[2*_MAX_SS];
-	char Path[4]={0,0,0,0};
-	FIL doom_wad;
-	FATFS 	FatFs; //This structure should be in the main internal ram.
-	memset(&FatFs,0,sizeof(FATFS));
-	memset(&doom_wad,0,sizeof(FIL));
+	char QSPI_Path[4]={0,0,0,0};
+	FIL qspi_doom_wad;
+	FIL sd_doom_wad;
+	FATFS qspiFatFs; //This structure should be in the main internal ram.
+	memset(&qspiFatFs,0,sizeof(FATFS));
+	memset(&qspi_doom_wad,0,sizeof(FIL));
+	memset(&sd_doom_wad,0,sizeof(FIL));
 	volatile int *test = (int*)malloc(sizeof(int));
+	char buf[4096];
 
-	//BSP_QSPI_Erase_Chip();
+	//QSPI
+	if(FATFS_LinkDriver(&QSPIDISK_Driver, QSPI_Path) != 0) Error_Handler(); // 1:/
+	if(f_mount(&qspiFatFs, (TCHAR const*)QSPI_Path, 0) != FR_OK) Error_Handler();
+	//if(f_mkfs((TCHAR const*)QSPI_Path, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK) Error_Handler();
+	//if(f_mkdir("0:/doom") != FR_OK) Error_Handler();
+	if(f_open(&qspi_doom_wad, "1:/doom/doom1.wad", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
 
-	/*##-1- Link the RAM disk I/O driver #######################################*/
-	if(FATFS_LinkDriver(&QSPIDISK_Driver, Path) == 0)
-	{
-		/*##-2- Register the file system object to the FatFs module ##############*/
-		if(f_mount(&FatFs, (TCHAR const*)Path, 0) != FR_OK)
-		{
-			/* FatFs Initialization Error */
-			Error_Handler();
-		}
-		else
-		{
-			/*##-3- Create a FAT file system (format) on the logical drive #########*/
-			if(f_mkfs((TCHAR const*)Path, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK)
-			{
-				/* FatFs Format Error */
-				Error_Handler();
-			}
-			else
-			{
-				/*##-4- Create and Open a new text file object with write access #####*/
-				if(f_open(&doom_wad, "STM32.TXT", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK)
-				{
-					/* 'STM32.TXT' file Open for write Error */
-					Error_Handler();
-				}
-				else
-				{
-					/*##-5- Write data to the text file ################################*/
-					res = f_write(&doom_wad, wtext, sizeof(wtext), (void *)&byteswritten);
+	if(f_open(&sd_doom_wad, "0:/doom/doom1.wad", FA_READ) != FR_OK) Error_Handler();
+    res = f_read(&sd_doom_wad, buf, sizeof(buf), (void*)&bytesread);
+    if((res == FR_OK) && bytesread){
+    	res = f_write(&qspi_doom_wad, buf, bytesread, (void*)&byteswritten);
+    	if(res != FR_OK){
+    		f_close(&qspi_doom_wad);
+    		f_close(&sd_doom_wad);
+    		while(1){
+    		}
+    	}
+    }
 
-					if((byteswritten == 0) || (res != FR_OK))
-					{
-						/* 'STM32.TXT' file Write or EOF Error */
-						Error_Handler();
-					}
-					else
-					{
-						/*##-6- Close the open text file #################################*/
-						f_close(&doom_wad);
+    f_close(&qspi_doom_wad);
+    f_close(&sd_doom_wad);
+    FATFS_UnLinkDriver(QSPI_Path);
 
-						/*##-7- Open the text file object with read access ###############*/
-						if(f_open(&doom_wad, "STM32.TXT", FA_READ) != FR_OK)
-						{
-							/* 'STM32.TXT' file Open for read Error */
-							Error_Handler();
-						}
-						else
-						{
-							/*##-8- Read data from the text file ###########################*/
-							res = f_read(&doom_wad, rtext, sizeof(rtext), (void *)&bytesread);
-
-							if((bytesread == 0) || (res != FR_OK))
-							{
-								/* 'STM32.TXT' file Read or EOF Error */
-								Error_Handler();
-							}
-							else
-							{
-								/*##-9- Close the open text file #############################*/
-								f_close(&doom_wad);
-
-								/*##-10- Compare read data with the expected data ############*/
-								if ((bytesread != byteswritten))
-								{
-									/* Read data is different from the expected data */
-									Error_Handler();
-								}
-								else
-								{
-									/* Success of the demo: no error occurrence */
-									BSP_LED_On(LED1);
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	/*##-11- Unlink the RAM disk I/O driver ####################################*/
-	FATFS_UnLinkDriver(Path);
-
-	/* Infinite loop */
-	while (1)
-	{
-	}
-
-
-
-
-
+    //Debug:
+    FATFS_UnLinkDriver(Path);
 #endif
 
 
 
-	FATFS_LinkDriver(&SD_Driver, Path);
-	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
-	while( BSP_SD_IsDetected() != 1 );
-	if( f_mount(&FatFs, (TCHAR const*)Path, 0) != FR_OK ) Error_Handler();
-	else {
-		*test = 23;
-	}
+    /*test:
+	if(f_open(&qspi_doom_wad,"0:/STM32.TXT",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK) Error_Handler();
+	res = f_write(&qspi_doom_wad,wtext,sizeof(wtext),(void*)&byteswritten);
+	if((byteswritten == 0) || (res != FR_OK)) Error_Handler();
+	f_close(&qspi_doom_wad);
+	if(f_open(&qspi_doom_wad,"0:/STM32.TXT",FA_READ) != FR_OK) Error_Handler();
+	res = f_read(&qspi_doom_wad,rtext,sizeof(rtext),(void*)&bytesread);
+	if((bytesread == 0) || (res != FR_OK)) Error_Handler();
+	f_close(&qspi_doom_wad);
+	if(bytesread != byteswritten)
+	   	while(1)
+	   		__ASM volatile("NOP");*/
+
+
 	/* FIXME: Less resolution for LCD, or it will overwrite heap memory */
 	/* We should put a background like after resizing the window in classic DOOM (?) */
 	BSP_LCD_Init();
