@@ -67,8 +67,8 @@ static void HUB_Process(void);
 extern void D_DoomMain (void);
 
 #ifdef USE_STM32746G_DISCOVERY
-#define LCD_FRAME_BUFFER          ((uint32_t)0xC0000000)
-#define QSPI_ADDR ((uint32_t)0x90000000)
+extern uint32_t _lcd_frame_buffer[];
+#define LCD_FRAME_BUFFER (uint32_t)_lcd_frame_buffer
 #endif
 
 int main(void)
@@ -87,7 +87,7 @@ int main(void)
 	MPU_Config();
 
 	/* Enable the CPU Cache */
-	CPU_CACHE_Enable();
+	//CPU_CACHE_Enable();
 
 	/* STM32F7xx HAL library initialization:
        - Configure the Flash ART accelerator on ITCM interface
@@ -106,22 +106,15 @@ int main(void)
 #endif /* DATA_IN_ExtSDRAM */
 
 	BSP_LED_Init(LED_GREEN); // Debug led for sdcard activity
-
-	//SD
-	char Path[4]={0,0,0,0};
-	FATFS sdFatFs;
-	memset(&sdFatFs,0,sizeof(FATFS));
-	if(FATFS_LinkDriver(&SD_Driver, Path) != 0) Error_Handler(); // 0:/
-	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
-	while( BSP_SD_IsDetected() != 1 );
-	if(f_mount(&sdFatFs, (TCHAR const*)Path, 0) != FR_OK) Error_Handler();
+	volatile int *test = (int*)malloc(sizeof(int)*100);
+	test[1] = (int)_lcd_frame_buffer;
+	free(test);
 
 #ifdef USE_STM32746G_DISCOVERY
 	//copy 1:/doom/doom1.wad --> 0:/doom/doom1.wad
 	FRESULT res;                                          /* FatFs function common result code */
 	uint32_t byteswritten, bytesread;                     /* File write/read counts */
-	uint8_t wtext[] = "This is STM32 working with FatFs"; /* File write buffer */
-	uint8_t rtext[100];                                   /* File read buffer */
+                                  /* File read buffer */
 	uint8_t workBuffer[2*_MAX_SS];
 	char QSPI_Path[4]={0,0,0,0};
 	FIL qspi_doom_wad;
@@ -130,39 +123,51 @@ int main(void)
 	memset(&qspiFatFs,0,sizeof(FATFS));
 	memset(&qspi_doom_wad,0,sizeof(FIL));
 	memset(&sd_doom_wad,0,sizeof(FIL));
-	volatile int *test = (int*)malloc(sizeof(int));
+
 	char buf[4096];
 
 	//QSPI
-	if(FATFS_LinkDriver(&QSPIDISK_Driver, QSPI_Path) != 0) Error_Handler(); // 1:/
-	if(f_mount(&qspiFatFs, (TCHAR const*)QSPI_Path, 0) != FR_OK) Error_Handler();
+	if(FATFS_LinkDriver(&QSPIDISK_Driver, QSPI_Path) != 0) Error_Handler(); // "0:/"
+	if(f_mount(&qspiFatFs, (TCHAR const*)QSPI_Path, 1) != FR_OK) Error_Handler(); //1:Mount immediately
 	//if(f_mkfs((TCHAR const*)QSPI_Path, FM_ANY, 0, workBuffer, sizeof(workBuffer)) != FR_OK) Error_Handler();
 	//if(f_mkdir("0:/doom") != FR_OK) Error_Handler();
-	if(f_open(&qspi_doom_wad, "1:/doom/doom1.wad", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
 
-	if(f_open(&sd_doom_wad, "0:/doom/doom1.wad", FA_READ) != FR_OK) Error_Handler();
-    res = f_read(&sd_doom_wad, buf, sizeof(buf), (void*)&bytesread);
-    if((res == FR_OK) && bytesread){
-    	res = f_write(&qspi_doom_wad, buf, bytesread, (void*)&byteswritten);
-    	if(res != FR_OK){
-    		f_close(&qspi_doom_wad);
-    		f_close(&sd_doom_wad);
-    		while(1){
-    		}
-    	}
+	if(0){ //copy wad to qspi
+		if(f_open(&qspi_doom_wad, "0:/doom/doom1.wad", FA_CREATE_ALWAYS | FA_WRITE) != FR_OK) Error_Handler();
+	} else {
+		//check wad:
+		if(f_open(&qspi_doom_wad, "0:/doom/doom1.wad", FA_READ) != FR_OK) Error_Handler();
+		if(f_read(&qspi_doom_wad,buf,sizeof(buf),(void*)&bytesread) != FR_OK) Error_Handler();
+		f_close(&qspi_doom_wad);
+		goto wad_in_qspi;
+	}
+#endif
+
+	//SD
+	char Path[4]={0,0,0,0};
+	FATFS sdFatFs;
+	memset(&sdFatFs,0,sizeof(FATFS));
+	if(FATFS_LinkDriver(&SD_Driver, Path) != 0) Error_Handler();
+	BSP_SD_Detect_MspInit(&uSdHandle, NULL);
+	while( BSP_SD_IsDetected() != 1 );
+	if(f_mount(&sdFatFs, (TCHAR const*)Path, 0) != FR_OK) Error_Handler();
+
+#ifdef USE_STM32746G_DISCOVERY
+	if(f_open(&sd_doom_wad, "1:/doom/doom1.wad", FA_READ) != FR_OK) Error_Handler();
+	while(1){
+		res = f_read(&sd_doom_wad, buf, sizeof(buf), (void*)&bytesread);
+		if(res || bytesread == 0) break; //error or eof
+		res = f_write(&qspi_doom_wad, buf, bytesread, (void*)&byteswritten);
+		if(res || byteswritten < bytesread) break; //error or disk full
     }
-
     f_close(&qspi_doom_wad);
     f_close(&sd_doom_wad);
-    FATFS_UnLinkDriver(QSPI_Path);
-
-    //Debug:
     FATFS_UnLinkDriver(Path);
 #endif
 
-
-
     /*test:
+    uint8_t wtext[] = "This is STM32 working with FatFs"; // File write buffer
+	uint8_t rtext[100];
 	if(f_open(&qspi_doom_wad,"0:/STM32.TXT",FA_CREATE_ALWAYS|FA_WRITE) != FR_OK) Error_Handler();
 	res = f_write(&qspi_doom_wad,wtext,sizeof(wtext),(void*)&byteswritten);
 	if((byteswritten == 0) || (res != FR_OK)) Error_Handler();
@@ -174,12 +179,12 @@ int main(void)
 	if(bytesread != byteswritten)
 	   	while(1)
 	   		__ASM volatile("NOP");*/
-
+wad_in_qspi:
 
 	/* FIXME: Less resolution for LCD, or it will overwrite heap memory */
 	/* We should put a background like after resizing the window in classic DOOM (?) */
 	BSP_LCD_Init();
-	BSP_LCD_LayerDefaultInit(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
+	BSP_LCD_LayerRgb565Init(LTDC_ACTIVE_LAYER, LCD_FRAME_BUFFER);
 	BSP_LCD_SetLayerWindow(LTDC_ACTIVE_LAYER,0,0,320,240);
 	BSP_LCD_SelectLayer(LTDC_ACTIVE_LAYER);
 	BSP_LCD_FillCircle(BSP_LCD_GetXSize() - 40, 120, 20);
@@ -192,7 +197,7 @@ int main(void)
 	LCD_LOG_SetHeader((uint8_t *)"Log:");
 	LCD_UsrLog("Testing 1\n");
 	printf("Testing 2\n");
-	D_DoomMain ();
+	//D_DoomMain ();
 
 	memset(&hUSBHost[0], 0, sizeof(USBH_HandleTypeDef));
 
@@ -208,7 +213,7 @@ int main(void)
 	USBH_RegisterClass(&hUSBHost[0], USBH_HUB_CLASS);
 
 	/* Start Host Process */
-	USBH_Start(&hUSBHost[0]);
+	//USBH_Start(&hUSBHost[0]);
 
 	/* USB task */
 	//osThreadDef(USB_Thread, USBThread, osPriorityNormal, 0, 8 * configMINIMAL_STACK_SIZE);
@@ -229,7 +234,9 @@ int main(void)
 
 void vApplicationStackOverflowHook( TaskHandle_t xTask, signed char *pcTaskName )
 {
-	for( ;; );
+	while(1){
+		__ASM volatile("NOP");
+	}
 }
 
 static void USBThread(void const * argument)
@@ -243,6 +250,7 @@ static void USBThread(void const * argument)
 
 static void DoomThread(void const * argument)
 {
+	__ASM volatile("NOP");
 	D_DoomMain ();
 }
 
@@ -380,8 +388,8 @@ static void SystemClock_Config(void)
 	RCC_OscInitStruct.PLL.PLLN = 432;
 #endif
 #ifdef USE_STM32746G_DISCOVERY
-	RCC_OscInitStruct.PLL.PLLN = 432; //400;
-	RCC_OscInitStruct.PLL.PLLQ = 9; //8;
+	RCC_OscInitStruct.PLL.PLLN = 400;//432;
+	RCC_OscInitStruct.PLL.PLLQ = 8;//9;
 #endif
 	RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV2;
 #ifdef USE_STM32F769I_DISCO
@@ -394,7 +402,8 @@ static void SystemClock_Config(void)
 	if(HAL_PWREx_EnableOverDrive() != HAL_OK) Error_Handler();
 
 	/* Select PLL as system clock source and configure the HCLK, PCLK1 and PCLK2 clocks dividers */
-	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
+	RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK
+                                 | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2);
 	RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
 	RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
 	RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV4;

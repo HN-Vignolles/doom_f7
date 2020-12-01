@@ -223,7 +223,7 @@ OBJS = $(FRTOS_OBJS) $(FATF_OBJS) $(USBH_OBJS) $(HAL_OBJS) $(CMSIS_OBJS) $(BSP_O
 	 $(DOOM_OBJS) $(LCD_OBJS) $(USR_OBJS) build/$(STARTUP).o 
 
 
-all: build/$(GAME).elf build/$(GAME).bin size relf objd
+all: build/$(GAME).elf build/$(GAME).bin size relf objd sym
 
 
 build/$(GAME).elf: $(OBJS) $(LDSCRIPT)
@@ -254,6 +254,8 @@ relf: build/$(GAME).elf
 	$(READELF) -a build/$(GAME).elf > build/$(GAME).readelf.txt
 objd: build/$(GAME).elf
 	$(OBJDUMP) -d build/$(GAME).elf > build/$(GAME).objdump.txt
+sym: build/$(GAME).elf
+	$(OBJDUMP) -t build/$(GAME).elf > build/$(GAME).sym
 
 clean:
 	@rm -r build/*

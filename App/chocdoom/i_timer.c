@@ -127,6 +127,7 @@ int I_GetTimeMS(void)
 
 void I_Sleep(int ms)
 {
+	//HAL_delay(ms);
 	osDelay (ms);
 }
 

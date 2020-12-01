@@ -509,6 +509,9 @@ void SystemInit_ExtMemCtl(void)
   /* Disable write protection */
   tmpreg = FMC_Bank5_6->SDCR[0]; 
   FMC_Bank5_6->SDCR[0] = (tmpreg & 0xFFFFFDFF);
+
+  /* Enables the FMC Memory Mapping Swapping */
+  SYSCFG->MEMRMP |= 0x00000400;
 }
 #endif
 #endif /* DATA_IN_ExtSDRAM */

@@ -47,6 +47,7 @@
 #include "ff_gen_drv.h"
 #include "qspi_diskio.h"
 #include "stm32746g_discovery_qspi.h"
+#include "stm32746g_discovery.h"
 
 /* Block Size in Bytes */
 #define BLOCK_SIZE                4096
@@ -141,9 +142,9 @@ DRESULT QSPIDISK_read(BYTE lun, BYTE *buff, DWORD sector, UINT count){
 	uint8_t *pSrcBuffer = (uint8_t *)buff;
 	uint32_t BufferSize = BLOCK_SIZE * count;
 	uint32_t pQSPIAddress = sector * BLOCK_SIZE;
-
+	BSP_LED_On(LED_GREEN);
 	BSP_QSPI_Read(pSrcBuffer,pQSPIAddress,BufferSize);
-
+	BSP_LED_Off(LED_GREEN);
 	return RES_OK;
 }
 

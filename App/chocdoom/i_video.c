@@ -44,6 +44,9 @@ rcsid[] = "$Id: i_x.c,v 1.6 1997/02/03 22:45:10 b1 Exp $";
 #endif
 #ifdef USE_STM32746G_DISCOVERY
 #include "stm32746g_discovery_lcd.h"
+#define GFX_MAX_WIDTH 320
+extern uint32_t _lcd_frame_buffer[]; /* defined in the linker script */
+#define LCD_FRAME_BUFFER (uint32_t)_lcd_frame_buffer
 #endif
 
 #include "usbh_hid.h"
@@ -118,21 +121,29 @@ void I_InitGraphics (void)
 
 #ifdef USE_STM32F769I_DISCO
 	while(BSP_LCD_InitEx(LCD_ORIENTATION_LANDSCAPE) != LCD_OK);
+	BSP_LCD_LayerDefaultInit(1, LCD_FB_START_ADDRESS);
 	BSP_LCD_SetBrightness(100);
 #endif
 #ifdef USE_STM32746G_DISCOVERY
 	while(BSP_LCD_Init() != LCD_OK);
+	BSP_LCD_LayerRgb565Init(1, LCD_FRAME_BUFFER);
 #endif
-	
-	BSP_LCD_LayerDefaultInit(1, LCD_FB_START_ADDRESS);
 
 	BSP_LCD_SelectLayer(1);
-
+#ifdef USE_STM32F769I_DISCO
 	BSP_LCD_SetLayerWindow(	1,
 				(BSP_LCD_GetXSize() - 640) / 2,
 				(BSP_LCD_GetYSize() - 400) / 2,
 				640, 400 );
-
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+	BSP_LCD_SetLayerWindow(	1,
+				0,
+				0,
+				320,
+				240 );
+	BSP_LCD_Clear(LCD_COLOR_BLACK);
+#endif
 	I_VideoBuffer = (byte*) Z_Malloc (SCREENWIDTH * SCREENHEIGHT, PU_STATIC, NULL);
 
 	screenvisible = true;
@@ -362,14 +373,18 @@ void I_FinishUpdate (void)
 	{
 		for (x = 0; x < SCREENWIDTH; x++)
 		{
-			pixel = ((y * 2) * (SCREENWIDTH * 2)) + (x * 2);
-			index = I_VideoBuffer[y * SCREENWIDTH + x];
 
+			index = I_VideoBuffer[y * SCREENWIDTH + x];
+			pixel = ((y * 2) * (SCREENWIDTH * 2)) + (x * 2);
+#ifdef USE_STM32F769I_DISCO
 			((uint16_t*)LCD_FB_START_ADDRESS)[pixel    ] = rgb565_palette[index];
 			((uint16_t*)LCD_FB_START_ADDRESS)[pixel + 1] = rgb565_palette[index];
-
 			((uint16_t*)LCD_FB_START_ADDRESS)[(SCREENWIDTH * 2) + pixel    ] = rgb565_palette[index];
 			((uint16_t*)LCD_FB_START_ADDRESS)[(SCREENWIDTH * 2) + pixel + 1] = rgb565_palette[index];
+#endif
+#ifdef USE_STM32746G_DISCOVERY
+			((uint16_t*)LCD_FRAME_BUFFER)[y * SCREENWIDTH + x] = rgb565_palette[index];
+#endif
 		}
 	}
 }

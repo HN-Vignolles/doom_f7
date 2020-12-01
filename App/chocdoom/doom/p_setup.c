@@ -110,8 +110,6 @@ mapthing_t	playerstarts[MAXPLAYERS];
 
 
 
-
-
 //
 // P_LoadVertexes
 //
@@ -377,7 +375,8 @@ void P_LoadThings (int lump)
 	spawnthing.angle = SHORT(mt->angle);
 	spawnthing.type = SHORT(mt->type);
 	spawnthing.options = SHORT(mt->options);
-	
+	if(i == 210)
+		__asm volatile("nop");
 	P_SpawnMapThing(&spawnthing);
     }
 

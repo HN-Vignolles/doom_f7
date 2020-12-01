@@ -768,7 +768,12 @@ void P_SpawnMapThing (mapthing_t* mthing)
     if (mthing->type <= 4)
     {
 	// save spots for respawning in network games
-	playerstarts[mthing->type-1] = *mthing;
+	//playerstarts[mthing->type-1] = *mthing;
+	playerstarts[mthing->type-1].x = mthing->x;
+	playerstarts[mthing->type-1].y = mthing->y;
+	playerstarts[mthing->type-1].angle = mthing->angle;
+	playerstarts[mthing->type-1].type = mthing->type;
+	playerstarts[mthing->type-1].options = mthing->options;
 	if (!deathmatch)
 	    P_SpawnPlayer (mthing);
 

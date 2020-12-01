@@ -38,14 +38,15 @@ _estack = 0x20050000; /* end of RAM */
 /* Generate a link error if heap and stack don't fit into RAM */
 /*_Min_Heap_Size = 0x2000; /* required amount of heap  */
 _Min_Stack_Size = 0x2000; /* required amount of stack */
+_lcd_frame_buffer = 0x60000000;
 
 /* Specify the memory areas */
 MEMORY
 {
 FLASH (rx)      : ORIGIN = 0x08000000, LENGTH = 1024K
 RAM (xrw)      : ORIGIN = 0x20000000, LENGTH = 320K
-/*SDRAM (xrw) : ORIGIN = 0xC0177000, LENGTH = 6656K */ /* first 1536K is used as LCD frame buffer */
-SDRAM (xrw) : ORIGIN = 0xC004B000, LENGTH = 7892K /* first 300K is used as LCD frame buffer */
+SDRAM (xrw) : ORIGIN = 0x6004B000, LENGTH = 7892K /* first 300K is used as LCD frame buffer */
+                                                  /* ORIGIN = 0xC004B000 */
 QSPI (xrw)      : ORIGIN = 0x90000000, LENGTH = 16M
 }
 
@@ -59,7 +60,7 @@ SECTIONS
   {
     . = ALIGN(4);
     *(.sdram .sdram.*)
-    build/App/chocdoom/w_wad.o(COMMON)
+    /*build/App/chocdoom/w_wad.o(COMMON)*/
   } > SDRAM
 
   /* The startup code goes first into FLASH */
